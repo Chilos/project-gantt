@@ -1,0 +1,11 @@
+{
+	"id": "project-gantt",
+	"name": "Project Gantt",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Интерактивная диаграмма Ганта для управления проектами в Obsidian",
+	"author": "Chilos Ohh",
+	"authorUrl": "",
+	"fundingUrl": "",
+	"isDesktopOnly": true
+}

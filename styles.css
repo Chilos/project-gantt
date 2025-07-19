@@ -1,0 +1,244 @@
+/*
+
+This CSS file will be included with your plugin, and
+available in the app when your plugin is enabled.
+
+If your plugin does not need CSS, delete this file.
+
+*/
+
+.gantt-container {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: auto;
+	background: var(--background-primary);
+}
+
+.gantt-header {
+	display: flex;
+	border-bottom: 2px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.gantt-project-header {
+	min-width: 300px;
+	width: 300px;
+	padding: 10px;
+	font-weight: bold;
+	border-right: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.gantt-time-header {
+	flex: 1;
+	min-width: 0;
+}
+
+.gantt-sprint-row, .gantt-day-row {
+	display: flex;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.gantt-sprint-header {
+	text-align: center;
+	padding: 8px 4px;
+	border-right: 1px solid var(--background-modifier-border);
+	background: var(--background-modifier-hover);
+	font-weight: bold;
+}
+
+.gantt-sprint-separator {
+	border-right: 2px solid var(--background-modifier-border-hover) !important;
+	margin-right: 1px;
+}
+
+.gantt-day-header {
+	text-align: center;
+	padding: 4px 2px;
+	border-right: 1px solid var(--background-modifier-border);
+	font-size: 12px;
+	line-height: 1.2;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 40px;
+}
+
+.gantt-current-day {
+	background: var(--text-accent) !important;
+	color: white;
+}
+
+.gantt-project-row {
+	display: flex;
+	border-bottom: 1px solid var(--background-modifier-border);
+	min-height: 80px !important;
+}
+
+.gantt-project-main {
+	background: var(--background-secondary);
+	font-weight: bold;
+}
+
+.gantt-stage-row {
+	background: var(--background-primary-alt);
+	min-height: 80px !important;
+}
+
+.gantt-stage-name {
+	font-weight: normal;
+}
+
+.gantt-project-name {
+	min-width: 300px;
+	width: 300px;
+	padding: 10px;
+	border-right: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	word-wrap: break-word;
+	overflow: hidden;
+}
+
+.gantt-assignee {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.gantt-project-timeline {
+	flex: 1;
+	position: relative;
+	min-height: 80px !important;
+	overflow: visible;
+	margin-left: 0;
+	min-width: 0;
+}
+
+.gantt-stage {
+	position: absolute;
+	top: 5px;
+	height: 40px !important;
+	border-radius: 6px;
+	font-size: 16px !important;
+	cursor: move;
+	display: flex;
+	align-items: center;
+	user-select: none;
+	padding: 0;
+	gap: 12px;
+}
+
+.gantt-stage:hover {
+	opacity: 0.8;
+}
+
+.gantt-stage-days {
+	font-weight: bold;
+	font-size: 18px !important;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 6px;
+	padding: 8px 12px;
+	min-width: 30px;
+	text-align: center;
+	flex-shrink: 0;
+}
+
+.gantt-stage-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	flex: 1;
+	min-width: 0;
+	line-height: 0.8;
+}
+
+.gantt-stage-name {
+	font-size: 16px !important;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-bottom: 4px;
+}
+
+.gantt-stage-assignee {
+	font-size: 14px !important;
+	opacity: 0.85;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.gantt-milestone {
+	position: absolute;
+	top: 47px !important;
+	width: 32px;
+	height: 32px;
+	/* НЕ устанавливаем фоновый цвет и border - позволяем inline стилям работать */
+	border-radius: 25%;
+	color: white;
+	font-size: 8px;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: move;
+	user-select: none;
+	text-align: center;
+	line-height: 1;
+	overflow: hidden;
+	/* Убираем transition чтобы не мешал */
+}
+
+/* Стили по умолчанию только если НЕТ кастомного цвета */
+.gantt-milestone:not([data-custom-color]) {
+	background: var(--text-accent);
+	border: 2px solid var(--text-accent);
+}
+
+.gantt-dragging {
+	opacity: 0.7;
+	z-index: 1000;
+}
+
+.gantt-boundary-constraint {
+	box-shadow: 0 0 0 2px var(--text-error) !important;
+	opacity: 0.9 !important;
+}
+
+.gantt-resize-handle {
+	position: absolute;
+	top: 0;
+	width: 4px;
+	height: 100%;
+	cursor: ew-resize;
+	opacity: 0;
+}
+
+.gantt-resize-handle:hover {
+	opacity: 0.5;
+	background: white;
+}
+
+.gantt-resize-handle.gantt-resizing {
+	opacity: 1;
+	background: rgba(0, 122, 204, 0.5);
+	border: 1px solid #007ACC;
+}
+
+.gantt-stage:hover .gantt-resize-handle {
+	opacity: 0.3;
+}
+
+.gantt-resize-right {
+	right: 0;
+}
+
+.gantt-error {
+	color: var(--text-error);
+	padding: 10px;
+	border: 1px solid var(--text-error);
+	border-radius: 4px;
+	background: var(--background-primary-alt);
+}
