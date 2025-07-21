@@ -87,6 +87,7 @@ const DEFAULT_SETTINGS: GanttSettings = {
 
 export default class ProjectGanttPlugin extends Plugin {
 	settings: GanttSettings;
+	private ganttResizeHandler: (() => void) | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -100,7 +101,12 @@ export default class ProjectGanttPlugin extends Plugin {
 		this.addSettingTab(new GanttSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	onunload() {
+		if (this.ganttResizeHandler) {
+			window.removeEventListener('resize', this.ganttResizeHandler);
+			this.ganttResizeHandler = null;
+		}
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -117,6 +123,15 @@ export default class ProjectGanttPlugin extends Plugin {
 				this.updateSourceContent(ctx, newData, source);
 			});
 			ganttView.render();
+			// --- Добавляем обработку resize ---
+			if (this.ganttResizeHandler) {
+				window.removeEventListener('resize', this.ganttResizeHandler);
+			}
+			this.ganttResizeHandler = () => {
+				ganttView.render();
+			};
+			window.addEventListener('resize', this.ganttResizeHandler);
+			// --- конец блока ---
 		} catch (error) {
 			element.createEl('div', { 
 				text: `Ошибка парсинга диаграммы Ганта: ${error.message}`,
@@ -586,47 +601,102 @@ class GanttView {
 		if (this.isUpdating) {
 			return;
 		}
-		
-		this.element.empty();
-		this.element.addClass('gantt-container');
 
-		const ganttTable = this.element.createEl('div', { cls: 'gantt-table' });
-		
+		// Вместо полного пересоздания gantt-table ищем или создаём его
+		let ganttTable = this.element.querySelector('.gantt-table') as HTMLElement;
+		if (!ganttTable) {
+			this.element.empty();
+			this.element.addClass('gantt-container');
+			ganttTable = this.element.createEl('div', { cls: 'gantt-table' });
+		}
+		// Устанавливаем ширину и фон для gantt-table
+		const totalDays = this.generateWorkingDaysScale().length;
+		const totalWidth = totalDays * this.getActualCellWidth();
+		ganttTable.style.width = `${totalWidth + 300}px`; // 300px — ширина project-header
+		ganttTable.style.background = 'var(--background-primary)';
 		this.renderHeader(ganttTable);
 		this.renderProjects(ganttTable);
-		
 		this.setupEventListeners();
-		
-		// Кешируем реальную ширину ячейки после рендеринга
+		this.setupStickyScroll();
+
+		// Восстанавливаем scrollLeft несколько раз с задержкой, чтобы перебить любые асинхронные изменения
+		const restoreScroll = (attempt = 0) => {
+			const newTimeHeader = this.element.querySelector('.gantt-time-header') as HTMLElement;
+			if (newTimeHeader && newTimeHeader.scrollWidth > newTimeHeader.clientWidth) {
+				newTimeHeader.scrollLeft = 0; // Сбрасываем scrollLeft
+				console.log('Попытка восстановления scrollLeft:', attempt, newTimeHeader.scrollLeft);
+			}
+			if (attempt < 5) {
+				setTimeout(() => restoreScroll(attempt + 1), 50);
+			}
+		};
+		restoreScroll();
+
+		// Восстанавливаем scrollLeft ещё раз через setTimeout (на случай асинхронных изменений)
 		setTimeout(() => {
 			this.cacheActualCellWidth();
 		}, 100);
 	}
 
+	private setupStickyScroll() {
+		const timeHeader = this.element.querySelector('.gantt-time-header') as HTMLElement;
+		if (!timeHeader) return;
+		let lastScrollLeft = timeHeader.scrollLeft;
+		timeHeader.addEventListener('scroll', () => {
+			lastScrollLeft = timeHeader.scrollLeft;
+		});
+		const observer = new MutationObserver(() => {
+			if (timeHeader.scrollLeft !== lastScrollLeft) {
+				timeHeader.scrollLeft = lastScrollLeft;
+			}
+		});
+		observer.observe(timeHeader, { childList: true, subtree: true });
+	}
+
 	private cacheActualCellWidth() {
-		const dayHeader = this.element.querySelector('.gantt-day-header') as HTMLElement;
-		this.actualCellWidth = dayHeader ? dayHeader.offsetWidth : this.settings.cellWidth;
+		// Ячейка всегда фиксированной ширины
+		this.actualCellWidth = this.settings.cellWidth;
 	}
 
 	private getActualCellWidth(): number {
-		return this.actualCellWidth || this.settings.cellWidth;
+		return this.settings.cellWidth;
 	}
 
 	private renderHeader(container: HTMLElement) {
-		const header = container.createEl('div', { cls: 'gantt-header' });
-		
+		// Вместо пересоздания .gantt-header ищем или создаём его
+		let header = container.querySelector('.gantt-header') as HTMLElement;
+		if (!header) {
+			header = container.createEl('div', { cls: 'gantt-header' });
+		} else {
+			header.empty();
+		}
 		// Заголовок с проектами
-		const projectHeader = header.createEl('div', { cls: 'gantt-project-header' });
+		let projectHeader = header.querySelector('.gantt-project-header') as HTMLElement;
+		if (!projectHeader) {
+			projectHeader = header.createEl('div', { cls: 'gantt-project-header' });
+		} else {
+			projectHeader.empty();
+		}
 		projectHeader.textContent = 'Проекты';
 
 		// Заголовки спринтов и дней
-		const timeHeader = header.createEl('div', { cls: 'gantt-time-header' });
-		
+		let timeHeader = header.querySelector('.gantt-time-header') as HTMLElement;
+		if (!timeHeader) {
+			timeHeader = header.createEl('div', { cls: 'gantt-time-header' });
+		} else {
+			timeHeader.empty();
+		}
+
 		// Создаем временную шкалу
 		const timeScale = this.generateWorkingDaysScale();
-		
+
 		// Спринты
-		const sprintRow = timeHeader.createEl('div', { cls: 'gantt-sprint-row' });
+		let sprintRow = timeHeader.querySelector('.gantt-sprint-row') as HTMLElement;
+		if (!sprintRow) {
+			sprintRow = timeHeader.createEl('div', { cls: 'gantt-sprint-row' });
+		} else {
+			sprintRow.empty();
+		}
 		for (let i = 0; i < this.data.sprints.length; i++) {
 			const sprint = this.data.sprints[i];
 			const sprintDays = this.getWorkingDaysBetween(sprint.start, sprint.end);
@@ -634,29 +704,26 @@ class GanttView {
 				cls: 'gantt-sprint-header',
 				text: sprint.name
 			});
-			sprintEl.style.width = `${sprintDays * this.settings.cellWidth}px`;
-			
-			// Добавляем класс для разделения спринтов (кроме последнего)
+			sprintEl.style.width = `${sprintDays * this.getActualCellWidth()}px`;
 			if (i < this.data.sprints.length - 1) {
 				sprintEl.addClass('gantt-sprint-separator');
 			}
 		}
 
 		// Дни
-		const dayRow = timeHeader.createEl('div', { cls: 'gantt-day-row' });
+		let dayRow = timeHeader.querySelector('.gantt-day-row') as HTMLElement;
+		if (!dayRow) {
+			dayRow = timeHeader.createEl('div', { cls: 'gantt-day-row' });
+		} else {
+			dayRow.empty();
+		}
 		for (const day of timeScale) {
 			const dayName = this.getDayNameRu(day);
 			const dayNumber = day.getDate().toString();
-			const headerText = `${dayNumber}\n${dayName}`;
-			
-			const dayEl = dayRow.createEl('div', { 
-				cls: 'gantt-day-header'
-			});
+			const dayEl = dayRow.createEl('div', { cls: 'gantt-day-header' });
 			dayEl.style.width = `${this.settings.cellWidth}px`;
-			dayEl.style.whiteSpace = 'pre-line'; // Разрешаем перенос строк
-			dayEl.textContent = headerText;
-			
-			// Подсветка текущего дня
+			const numDiv = dayEl.createEl('div', { text: dayNumber });
+			const nameDiv = dayEl.createEl('div', { text: dayName });
 			if (this.isSameDay(day, new Date())) {
 				dayEl.addClass('gantt-current-day');
 			}

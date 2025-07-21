@@ -30,13 +30,19 @@ If your plugin does not need CSS, delete this file.
 }
 
 .gantt-time-header {
-	flex: 1;
-	min-width: 0;
+	flex: 0 0 auto;
+	width: auto;
+	min-width: unset;
+	max-width: unset;
+	overflow-x: auto;
 }
 
-.gantt-sprint-row, .gantt-day-row {
+.gantt-sprint-row {
 	display: flex;
-	border-bottom: 1px solid var(--background-modifier-border);
+	flex: 0 0 auto;
+	width: auto;
+	min-width: unset;
+	max-width: unset;
 }
 
 .gantt-sprint-header {
@@ -45,6 +51,10 @@ If your plugin does not need CSS, delete this file.
 	border-right: 1px solid var(--background-modifier-border);
 	background: var(--background-modifier-hover);
 	font-weight: bold;
+	min-width: unset;
+	max-width: unset;
+	width: unset;
+	flex: unset;
 }
 
 .gantt-sprint-separator {
@@ -52,16 +62,31 @@ If your plugin does not need CSS, delete this file.
 	margin-right: 1px;
 }
 
+.gantt-day-row {
+	display: flex;
+	flex-direction: row;
+	width: auto;
+	min-width: unset;
+	max-width: unset;
+}
+
 .gantt-day-header {
 	text-align: center;
-	padding: 4px 2px;
+	padding: 2px 0;
 	border-right: 1px solid var(--background-modifier-border);
-	font-size: 12px;
-	line-height: 1.2;
+	font-size: 11px;
+	line-height: 1.1;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	min-height: 40px;
+	width: 40px;
+	min-width: 40px;
+	max-width: 40px;
+	flex: 0 0 40px;
+	/* убираем переносы и word-break */
+	white-space: normal;
+	word-break: normal;
+	overflow: hidden;
 }
 
 .gantt-current-day {
