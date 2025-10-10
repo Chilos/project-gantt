@@ -100,32 +100,19 @@ export class GanttRenderer {
   /**
    * Рендерит вертикальную линию текущего дня
    */
-  private renderTodayLine(workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderTodayLine(workingDays: Date[], cellWidth: number, columnWidth: number, _workingDaysConfig: any): string {
     const today = getToday();
 
     // Находим индекс текущего дня в массиве рабочих дней
     const todayIndex = workingDays.findIndex(day => isSameDay(day, today));
 
-    // Отладочная информация
-    console.log('[Project Gantt] Today line debug:', {
-      today: today.toISOString().split('T')[0],
-      todayIndex,
-      workingDaysCount: workingDays.length,
-      workingDaysSample: workingDays.slice(0, 5).map(d => d.toISOString().split('T')[0]),
-      includeDates: workingDaysConfig.includeDates,
-      excludeWeekdays: workingDaysConfig.excludeWeekdays,
-    });
-
     // Если сегодня не является рабочим днём (не в списке), не рисуем линию
     if (todayIndex === -1) {
-      console.log('[Project Gantt] Today is not a working day - not rendering line');
       return '';
     }
 
     // Позиция линии: смещение колонки + позиция ячейки + половина ширины ячейки (центр)
     const linePosition = columnWidth + (todayIndex * cellWidth) + (cellWidth / 2);
-
-    console.log('[Project Gantt] Today line position:', { todayIndex, linePosition, columnWidth, cellWidth });
 
     return `<div class="gantt-today-line" style="left: ${linePosition}px;"></div>`;
   }
