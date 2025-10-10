@@ -16,7 +16,7 @@ import {
   getWidthFromDuration,
   calculateEndDate,
 } from '../utils/positionUtils';
-import { clampDate } from '../utils/dateUtils';
+import { clampDate, addWorkingDays, getStageEndDate } from '../utils/dateUtils';
 import { PLUGIN_NAME } from '../utils/constants';
 
 interface DragState {
@@ -281,7 +281,7 @@ export class VisualEditor {
         this.isUpdating = false;
         this.preservedPositions.clear();
         this.preservedSizes.clear();
-      }, 50);
+      }, 100);
     });
 
     // Сбрасываем состояние
@@ -317,20 +317,20 @@ export class VisualEditor {
 
       if (stage && this.dragState.initialStageStart && this.dragState.initialStageDuration) {
         const originalDuration = this.dragState.initialStageDuration;
-        const duration = originalDuration * 24 * 60 * 60 * 1000;
 
         let newStartDate = new Date(newDate);
-        let newEndDate = new Date(newDate.getTime() + duration);
+        let newEndDate = getStageEndDate(newStartDate, originalDuration);
 
         // Проверяем границы
         if (newStartDate < this.data.startDate) {
           newStartDate = new Date(this.data.startDate);
-          newEndDate = new Date(newStartDate.getTime() + duration);
+          newEndDate = getStageEndDate(newStartDate, originalDuration);
         }
 
         if (newEndDate > this.data.endDate) {
-          newEndDate = new Date(this.data.endDate);
-          newStartDate = new Date(newEndDate.getTime() - duration);
+          // Если конечная дата выходит за границу, используем текущую визуальную позицию
+          // без пересчета, так как constrainPosition уже правильно ограничил позицию
+          newStartDate = new Date(newDate);
         }
 
         stage.start = newStartDate;

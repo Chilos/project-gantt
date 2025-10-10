@@ -2,7 +2,7 @@
   "name": "logseq-plugin-project-gantt",
   "author": "Chilos",
   "description": "Создание интерактивных досок ганта",
-  "version": "0.1.4",
+  "version": "0.1.3",
   "main": "dist/index.js",
   "id": "logseq-plugin--project-gantt",
   "title": "Project Gantt",

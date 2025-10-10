@@ -50,7 +50,8 @@ export function getPositionLimits(
   config: WorkingDaysConfig
 ): { minPosition: number; maxPosition: number } {
   const minPosition = 0;
-  const maxPosition = getDatePosition(startDate, endDate, cellWidth, config);
+  // maxPosition должен включать весь последний день, добавляем +1 cellWidth
+  const maxPosition = getDatePosition(startDate, endDate, cellWidth, config) + cellWidth;
 
   return { minPosition, maxPosition };
 }

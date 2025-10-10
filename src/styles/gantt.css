@@ -9,6 +9,7 @@
   border-radius: 4px;
   margin: 12px 0;
   position: relative;
+  box-sizing: border-box;
 }
 
 .gantt-container:hover .gantt-edit-button {
@@ -22,6 +23,8 @@
   background: var(--ls-primary-background-color);
   margin-right: 16px;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Header */

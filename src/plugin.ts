@@ -214,14 +214,15 @@ export class ProjectGanttPlugin {
       // Настраиваем обработчики событий
       editor.setupEventListeners(container);
 
-      // Создаем или переиспользуем resizer для этого слота
-      let resizer = this.activeResizers.get(slotId);
-      if (!resizer) {
-        resizer = new ColumnResizer(container);
-        this.activeResizers.set(slotId, resizer);
-        // Восстанавливаем сохраненную ширину
-        resizer.restoreWidth();
+      // Всегда пересоздаём resizer, так как контейнер новый после перерисовки
+      const oldResizer = this.activeResizers.get(slotId);
+      if (oldResizer) {
+        oldResizer.cleanup();
       }
+
+      // ColumnResizer автоматически восстанавливает ширину в конструкторе
+      const resizer = new ColumnResizer(container);
+      this.activeResizers.set(slotId, resizer);
 
       console.log(`[${PLUGIN_NAME}] Drag-and-drop and column resizing enabled for slot:`, slotId);
     } catch (err) {

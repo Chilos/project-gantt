@@ -17,6 +17,11 @@ export class ColumnResizer {
     this.container = container;
     // Получаем правильный document для iframe Logseq
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
+
+    // Восстанавливаем сохранённую ширину ДО инициализации событий
+    // чтобы предотвратить "мерцание" при перерисовке
+    this.restoreWidth();
+
     this.init();
   }
 
@@ -118,6 +123,9 @@ export class ColumnResizer {
 
     // Обновляем ширину таблицы
     this.updateTableWidth(width);
+
+    // Обновляем позицию вертикальных линий спринтов
+    this.updateSprintSeparators(width);
   }
 
   /**
@@ -143,6 +151,32 @@ export class ColumnResizer {
     const totalWidth = columnWidth + timelineWidth;
 
     table.style.width = `${totalWidth}px`;
+  }
+
+  /**
+   * Обновляет позицию вертикальных линий-разделителей спринтов
+   */
+  private updateSprintSeparators(columnWidth: number): void {
+    const separators = this.container.querySelectorAll('.gantt-sprint-separator-line');
+    if (separators.length === 0) return;
+
+    // Получаем заголовки спринтов для вычисления их ширины
+    const sprintHeaders = this.container.querySelectorAll('.gantt-sprint-header');
+    if (sprintHeaders.length === 0) return;
+
+    let currentPosition = 0;
+
+    sprintHeaders.forEach((header, index) => {
+      const headerElement = header as HTMLElement;
+      const width = headerElement.offsetWidth;
+      currentPosition += width;
+
+      // Обновляем позицию соответствующего разделителя
+      if (index < separators.length) {
+        const separator = separators[index] as HTMLElement;
+        separator.style.left = `${columnWidth + currentPosition}px`;
+      }
+    });
   }
 
   /**

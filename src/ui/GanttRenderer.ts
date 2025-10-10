@@ -41,14 +41,14 @@ export class GanttRenderer {
 
     const sprintSeparators = this.renderSprintSeparators(data.sprints, workingDays, cellWidth, columnWidth, workingDaysConfig);
 
-    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(workingDays, data.sprints, cellWidth, workingDaysConfig)}${this.renderProjects(data, workingDays, cellWidth, workingDaysConfig)}${sprintSeparators}</div></div>`;
+    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(workingDays, data.sprints, cellWidth, columnWidth, workingDaysConfig)}${this.renderProjects(data, workingDays, cellWidth, columnWidth, workingDaysConfig)}${sprintSeparators}</div></div>`;
   }
 
   /**
    * Рендерит заголовок с временной шкалой
    */
-  private renderHeader(workingDays: Date[], sprints: Sprint[], cellWidth: number, workingDaysConfig: any): string {
-    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}">Проекты<div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, workingDays, cellWidth, workingDaysConfig)}${this.renderDayRow(workingDays, cellWidth)}</div></div>`;
+  private renderHeader(workingDays: Date[], sprints: Sprint[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}" style="width: ${columnWidth}px;">Проекты<div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, workingDays, cellWidth, workingDaysConfig)}${this.renderDayRow(workingDays, cellWidth)}</div></div>`;
   }
 
   /**
@@ -116,16 +116,16 @@ export class GanttRenderer {
   /**
    * Рендерит все проекты
    */
-  private renderProjects(data: GanttData, workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
+  private renderProjects(data: GanttData, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     if (!data.projects || data.projects.length === 0) {
       return `<div class="${CSS_CLASSES.PROJECTS}"></div>`;
     }
 
     const projectsHtml = data.projects.map(project => {
       if (project.layout === 'multiline') {
-        return this.renderProjectMultiline(project, data.startDate, workingDays, cellWidth, workingDaysConfig);
+        return this.renderProjectMultiline(project, data.startDate, workingDays, cellWidth, columnWidth, workingDaysConfig);
       } else {
-        return this.renderProjectInline(project, data.startDate, workingDays, cellWidth, workingDaysConfig);
+        return this.renderProjectInline(project, data.startDate, workingDays, cellWidth, columnWidth, workingDaysConfig);
       }
     }).join('');
 
@@ -135,7 +135,7 @@ export class GanttRenderer {
   /**
    * Рендерит проект в inline режиме (все этапы на одной строке)
    */
-  private renderProjectInline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
+  private renderProjectInline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     // Если проект без этапов и мелстоунов - НЕ рендерим вообще
     const hasStages = project.stages.length > 0;
     const hasMilestones = project.milestones.length > 0;
@@ -154,26 +154,26 @@ export class GanttRenderer {
 
     const projectNameHtml = this.parseLogseqLinks(project.name);
 
-    return `<div class="${CSS_CLASSES.PROJECT_ROW}" data-project-id="${project.id}"><div class="${CSS_CLASSES.PROJECT_NAME}"><div>${projectNameHtml}</div>${project.assignee ? `<span class="gantt-assignee">${this.escapeHtml(project.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${stagesHtml}${milestonesHtml}</div></div>`;
+    return `<div class="${CSS_CLASSES.PROJECT_ROW}" data-project-id="${project.id}"><div class="${CSS_CLASSES.PROJECT_NAME}" style="width: ${columnWidth}px;"><div>${projectNameHtml}</div>${project.assignee ? `<span class="gantt-assignee">${this.escapeHtml(project.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${stagesHtml}${milestonesHtml}</div></div>`;
   }
 
   /**
    * Рендерит проект в multiline режиме (каждый этап на отдельной строке)
    */
-  private renderProjectMultiline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
+  private renderProjectMultiline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     const milestonesHtml = project.milestones.map(milestone =>
       this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig)
     ).join('');
 
     const projectNameHtml = this.parseLogseqLinks(project.name);
 
-    const mainRow = `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-project-main" data-project-id="${project.id}"><div class="${CSS_CLASSES.PROJECT_NAME}"><div>${projectNameHtml}</div>${project.assignee ? `<span class="gantt-assignee">${this.escapeHtml(project.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${milestonesHtml}</div></div>`;
+    const mainRow = `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-project-main" data-project-id="${project.id}"><div class="${CSS_CLASSES.PROJECT_NAME}" style="width: ${columnWidth}px;"><div>${projectNameHtml}</div>${project.assignee ? `<span class="gantt-assignee">${this.escapeHtml(project.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${milestonesHtml}</div></div>`;
 
     const stageRows = project.stages.map(stage => {
       const stageHtml = this.renderStage(stage, startDate, cellWidth, workingDaysConfig);
       const stageNameHtml = this.parseLogseqLinks(stage.name);
 
-      return `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-stage-row" data-project-id="${project.id}" data-stage-id="${stage.id}"><div class="${CSS_CLASSES.PROJECT_NAME}"><div> - ${stageNameHtml}</div>${stage.assignee ? `<span class="gantt-assignee">${this.escapeHtml(stage.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${stageHtml}</div></div>`;
+      return `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-stage-row" data-project-id="${project.id}" data-stage-id="${stage.id}"><div class="${CSS_CLASSES.PROJECT_NAME}" style="width: ${columnWidth}px;"><div> - ${stageNameHtml}</div>${stage.assignee ? `<span class="gantt-assignee">${this.escapeHtml(stage.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${stageHtml}</div></div>`;
     }).join('');
 
     return mainRow + stageRows;
