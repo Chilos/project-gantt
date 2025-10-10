@@ -105,6 +105,17 @@
   pointer-events: none;
 }
 
+.gantt-today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 3px solid var(--ls-link-text-color);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 /* Day Row */
 .gantt-day-row {
   display: flex;

@@ -9,7 +9,6 @@ import { ColorSystem } from './utils/colorSystem';
 import { encodeGanttData, decodeGanttData, createDefaultGanttData } from './utils/encoding';
 import { PLUGIN_NAME, RENDERER_TYPE } from './utils/constants';
 import type { GanttData, EditorButtonClickEvent, MacroRendererSlotEvent } from './types';
-import { GanttDataManager } from './storage/GanttDataManager';
 import { GanttRenderer } from './ui/GanttRenderer';
 import { VisualEditor } from './ui/VisualEditor';
 import { EditorModal } from './ui/EditorModal';
@@ -24,14 +23,12 @@ export class ProjectGanttPlugin {
   private colors: string[] = [];
   private slotUuidMap: Map<string, string> = new Map();
   private slotDataMap: Map<string, GanttData> = new Map();
-  private storage: GanttDataManager;
   private ganttRenderer: GanttRenderer;
   private activeEditors: Map<string, VisualEditor> = new Map();
   private activeResizers: Map<string, ColumnResizer> = new Map();
 
   constructor() {
     this.colorSystem = new ColorSystem();
-    this.storage = new GanttDataManager();
     this.ganttRenderer = new GanttRenderer();
   }
 
@@ -101,7 +98,7 @@ export class ProjectGanttPlugin {
 
         // Берем последние отрендеренные данные
         const currentData = this.slotDataMap.get(slotId) || createDefaultGanttData();
-        this.openEditor(blockUuid, currentData, slotId);
+        this.openEditor(blockUuid, currentData);
       },
 
       navigateToPage: async (e: any) => {
@@ -127,12 +124,14 @@ export class ProjectGanttPlugin {
 
           if (page) {
             // Переходим на страницу
-            await logseq.Editor.scrollToBlockInPage(pageName);
+            await logseq.Editor.scrollToBlockInPage(pageName, page.uuid);
           } else {
             // Если страницы не существует, создаем её
             console.log(`[${PLUGIN_NAME}] Page not found, creating:`, pageName);
-            await logseq.Editor.createPage(pageName);
-            await logseq.Editor.scrollToBlockInPage(pageName);
+            const newPage = await logseq.Editor.createPage(pageName);
+            if (newPage) {
+              await logseq.Editor.scrollToBlockInPage(pageName, newPage.uuid);
+            }
           }
         } catch (error) {
           console.error(`[${PLUGIN_NAME}] Failed to navigate to page:`, error);
@@ -233,7 +232,7 @@ export class ProjectGanttPlugin {
   /**
    * Открывает редактор для указанного блока
    */
-  private openEditor(blockUuid: string, initialData: GanttData, slotId: string): void {
+  private openEditor(blockUuid: string, initialData: GanttData): void {
     console.log(`[${PLUGIN_NAME}] Opening editor for block:`, blockUuid);
 
     // Создаем и показываем модальный редактор

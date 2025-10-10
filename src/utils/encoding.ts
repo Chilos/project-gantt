@@ -19,6 +19,7 @@ export function createDefaultGanttData(): GanttData {
     excludeWeekdays: DEFAULT_EXCLUDE_WEEKDAYS,
     includeDates: [],
     excludeDates: [],
+    showTodayLine: true,
   };
 }
 
@@ -48,6 +49,7 @@ export function toSerializable(data: GanttData): SerializableGanttData {
     excludeWeekdays: data.excludeWeekdays,
     includeDates: data.includeDates,
     excludeDates: data.excludeDates,
+    showTodayLine: data.showTodayLine,
   };
 }
 
@@ -77,6 +79,7 @@ export function fromSerializable(data: SerializableGanttData): GanttData {
     excludeWeekdays: data.excludeWeekdays || [],
     includeDates: data.includeDates || [],
     excludeDates: data.excludeDates || [],
+    showTodayLine: data.showTodayLine !== undefined ? data.showTodayLine : true,
   };
 }
 

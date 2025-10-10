@@ -4,7 +4,7 @@
  */
 
 import type { WorkingDaysConfig } from '../types';
-import { getWorkingDaysBetween, addWorkingDays, clampDate } from './dateUtils';
+import { getWorkingDaysBetween, addWorkingDays } from './dateUtils';
 
 /**
  * Получает позицию даты на временной шкале (в пикселях)

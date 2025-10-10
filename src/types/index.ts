@@ -53,6 +53,7 @@ export interface GanttData {
   excludeWeekdays: number[]; // 0=воскресенье, 6=суббота
   includeDates: string[]; // Конкретные даты для включения (формат YYYY-MM-DD)
   excludeDates: string[]; // Конкретные даты для исключения (формат YYYY-MM-DD)
+  showTodayLine?: boolean; // Показывать вертикальную линию текущего дня
 }
 
 // ===== SERIALIZABLE DATA TYPES (для JSON) =====
@@ -100,6 +101,7 @@ export interface SerializableGanttData {
   excludeWeekdays: number[];
   includeDates: string[];
   excludeDates: string[];
+  showTodayLine?: boolean;
 }
 
 // ===== UI TYPES =====

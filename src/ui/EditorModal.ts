@@ -5,7 +5,6 @@
 
 import type { GanttData, Project, Stage, Milestone, Sprint } from '../types';
 import { GanttDataManager } from '../storage/GanttDataManager';
-import { GanttManager } from '../core/GanttManager';
 import { generateId } from '../utils/encoding';
 import { formatDateISO, parseDateISO } from '../utils/dateUtils';
 import { DEFAULT_STAGE_COLORS, DEFAULT_MILESTONE_COLORS, PLUGIN_NAME } from '../utils/constants';
@@ -14,19 +13,14 @@ export class EditorModal {
   private data: GanttData;
   private blockUuid: string;
   private storage: GanttDataManager;
-  private ganttManager: GanttManager;
   private modalElement: HTMLElement | null = null;
   private selectedProject: Project | null = null;
-  private selectedStage: Stage | null = null;
-  private selectedMilestone: Milestone | null = null;
-  private selectedSprint: Sprint | null = null;
   private doc: Document;
 
   constructor(data: GanttData, blockUuid: string) {
     this.data = data;
     this.blockUuid = blockUuid;
     this.storage = new GanttDataManager();
-    this.ganttManager = new GanttManager(data);
     // Получаем правильный document (parent для iframe или обычный document)
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
   }
@@ -771,6 +765,14 @@ export class EditorModal {
           <small>Праздники и выходные в формате YYYY-MM-DD</small>
         </div>
 
+        <div class="gantt-form-group">
+          <label class="gantt-checkbox">
+            <input type="checkbox" id="settings-show-today-line" ${this.data.showTodayLine !== false ? 'checked' : ''} />
+            Показывать линию текущего дня
+          </label>
+          <small>Вертикальная линия, показывающая сегодняшнюю дату</small>
+        </div>
+
         <div class="gantt-form-actions">
           <button class="gantt-btn gantt-btn-primary" data-action="update-settings">Применить</button>
         </div>
@@ -917,7 +919,7 @@ export class EditorModal {
       type: name,
       date: parseDateISO(dateStr),
       assignee: assigneeName ? { name: assigneeName } : undefined,
-      color,
+      color: color || undefined,
     };
 
     project.milestones.push(newMilestone);
@@ -941,7 +943,7 @@ export class EditorModal {
     milestone.type = name;
     milestone.date = parseDateISO(dateStr);
     milestone.assignee = assigneeName ? { name: assigneeName } : undefined;
-    milestone.color = color;
+    milestone.color = color || undefined;
 
     this.selectProject(project);
     logseq.UI.showMsg('✅ Мелстоун обновлен', 'success');
@@ -1008,6 +1010,7 @@ export class EditorModal {
     const endStr = (this.modalElement?.querySelector('#settings-end-date') as HTMLInputElement)?.value;
     const includeStr = (this.modalElement?.querySelector('#settings-include-dates') as HTMLInputElement)?.value;
     const excludeStr = (this.modalElement?.querySelector('#settings-exclude-dates') as HTMLInputElement)?.value;
+    const showTodayLineCheckbox = this.modalElement?.querySelector('#settings-show-today-line') as HTMLInputElement;
 
     if (!startStr || !endStr) {
       logseq.UI.showMsg('Заполните даты начала и окончания', 'warning');
@@ -1027,6 +1030,9 @@ export class EditorModal {
     // Обновляем списки дат
     this.data.includeDates = includeStr.split(',').map(d => d.trim()).filter(d => d);
     this.data.excludeDates = excludeStr.split(',').map(d => d.trim()).filter(d => d);
+
+    // Обновляем настройку линии текущего дня
+    this.data.showTodayLine = showTodayLineCheckbox?.checked ?? true;
 
     logseq.UI.showMsg('✅ Настройки обновлены', 'success');
   }

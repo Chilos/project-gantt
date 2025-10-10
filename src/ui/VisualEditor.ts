@@ -14,9 +14,8 @@ import {
   constrainPosition,
   getDurationFromWidth,
   getWidthFromDuration,
-  calculateEndDate,
 } from '../utils/positionUtils';
-import { clampDate, addWorkingDays, getStageEndDate } from '../utils/dateUtils';
+import { clampDate, getStageEndDate } from '../utils/dateUtils';
 import { PLUGIN_NAME } from '../utils/constants';
 
 interface DragState {
@@ -37,7 +36,6 @@ export class VisualEditor {
   private container: HTMLElement | null = null;
   private cellWidth: number = DEFAULT_CELL_WIDTH;
   private dragState: DragState;
-  private isUpdating: boolean = false;
   private preservedPositions: Map<string, string> = new Map();
   private preservedSizes: Map<string, { width: string; left: string }> = new Map();
   private doc: Document;
@@ -275,10 +273,8 @@ export class VisualEditor {
     }
 
     // Сохраняем изменения
-    this.isUpdating = true;
     this.saveData().then(() => {
       setTimeout(() => {
-        this.isUpdating = false;
         this.preservedPositions.clear();
         this.preservedSizes.clear();
       }, 100);

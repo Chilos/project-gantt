@@ -4,8 +4,8 @@
  */
 
 import type { GanttData, GanttRenderOptions, Project, Stage, Milestone, Sprint } from '../types';
-import { DEFAULT_CELL_WIDTH, DEFAULT_CELL_HEIGHT, CSS_CLASSES, DAY_NAMES_RU } from '../utils/constants';
-import { generateWorkingDaysScale, getDayNameRu, isSameDay, getToday, getStageEndDate, getWorkingDaysBetween, isWorkingDay } from '../utils/dateUtils';
+import { DEFAULT_CELL_WIDTH, CSS_CLASSES } from '../utils/constants';
+import { generateWorkingDaysScale, getDayNameRu, isSameDay, getToday, getWorkingDaysBetween } from '../utils/dateUtils';
 import { ColorSystem } from '../utils/colorSystem';
 
 export class GanttRenderer {
@@ -40,8 +40,9 @@ export class GanttRenderer {
     const totalWidth = columnWidth + timelineWidth;
 
     const sprintSeparators = this.renderSprintSeparators(data.sprints, workingDays, cellWidth, columnWidth, workingDaysConfig);
+    const todayLine = (data.showTodayLine !== false) ? this.renderTodayLine(workingDays, cellWidth, columnWidth, workingDaysConfig) : '';
 
-    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(workingDays, data.sprints, cellWidth, columnWidth, workingDaysConfig)}${this.renderProjects(data, workingDays, cellWidth, columnWidth, workingDaysConfig)}${sprintSeparators}</div></div>`;
+    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(workingDays, data.sprints, cellWidth, columnWidth, workingDaysConfig)}${this.renderProjects(data, workingDays, cellWidth, columnWidth, workingDaysConfig)}${sprintSeparators}${todayLine}</div></div>`;
   }
 
   /**
@@ -54,7 +55,7 @@ export class GanttRenderer {
   /**
    * Рендерит строку спринтов
    */
-  private renderSprintRow(sprints: Sprint[], workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
+  private renderSprintRow(sprints: Sprint[], _workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
     if (!sprints || sprints.length === 0) {
       return '';
     }
@@ -73,7 +74,7 @@ export class GanttRenderer {
   /**
    * Рендерит вертикальные линии-разделители спринтов
    */
-  private renderSprintSeparators(sprints: Sprint[], workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderSprintSeparators(sprints: Sprint[], _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     if (!sprints || sprints.length === 0) {
       return '';
     }
@@ -94,6 +95,39 @@ export class GanttRenderer {
     });
 
     return separators.join('');
+  }
+
+  /**
+   * Рендерит вертикальную линию текущего дня
+   */
+  private renderTodayLine(workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+    const today = getToday();
+
+    // Находим индекс текущего дня в массиве рабочих дней
+    const todayIndex = workingDays.findIndex(day => isSameDay(day, today));
+
+    // Отладочная информация
+    console.log('[Project Gantt] Today line debug:', {
+      today: today.toISOString().split('T')[0],
+      todayIndex,
+      workingDaysCount: workingDays.length,
+      workingDaysSample: workingDays.slice(0, 5).map(d => d.toISOString().split('T')[0]),
+      includeDates: workingDaysConfig.includeDates,
+      excludeWeekdays: workingDaysConfig.excludeWeekdays,
+    });
+
+    // Если сегодня не является рабочим днём (не в списке), не рисуем линию
+    if (todayIndex === -1) {
+      console.log('[Project Gantt] Today is not a working day - not rendering line');
+      return '';
+    }
+
+    // Позиция линии: смещение колонки + позиция ячейки + половина ширины ячейки (центр)
+    const linePosition = columnWidth + (todayIndex * cellWidth) + (cellWidth / 2);
+
+    console.log('[Project Gantt] Today line position:', { todayIndex, linePosition, columnWidth, cellWidth });
+
+    return `<div class="gantt-today-line" style="left: ${linePosition}px;"></div>`;
   }
 
   /**
@@ -135,7 +169,7 @@ export class GanttRenderer {
   /**
    * Рендерит проект в inline режиме (все этапы на одной строке)
    */
-  private renderProjectInline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderProjectInline(project: Project, startDate: Date, _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     // Если проект без этапов и мелстоунов - НЕ рендерим вообще
     const hasStages = project.stages.length > 0;
     const hasMilestones = project.milestones.length > 0;
@@ -160,7 +194,7 @@ export class GanttRenderer {
   /**
    * Рендерит проект в multiline режиме (каждый этап на отдельной строке)
    */
-  private renderProjectMultiline(project: Project, startDate: Date, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderProjectMultiline(project: Project, startDate: Date, _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
     const milestonesHtml = project.milestones.map(milestone =>
       this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig)
     ).join('');
@@ -237,7 +271,7 @@ export class GanttRenderer {
     // Регулярное выражение для поиска [[Page Name]] или [[Page Name|Alias]]
     const linkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
-    return text.replace(linkRegex, (match, pageName, alias) => {
+    return text.replace(linkRegex, (_match, pageName, alias) => {
       const displayText = alias || pageName;
       const escapedPageName = this.escapeHtml(pageName);
       const escapedDisplayText = this.escapeHtml(displayText);

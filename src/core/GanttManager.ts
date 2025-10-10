@@ -4,7 +4,7 @@
  */
 
 import type { GanttData, Project, Stage, Milestone, Sprint } from '../types';
-import { generateId, sanitizeGanttData } from '../utils/encoding';
+import { sanitizeGanttData } from '../utils/encoding';
 
 export class GanttManager {
   private data: GanttData;
