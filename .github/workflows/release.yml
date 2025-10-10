@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,17 +43,17 @@ jobs:
           cp package.json release/
           cp icon.svg release/
           cd release
-          zip -r ../cardbord-${{ steps.get_version.outputs.VERSION }}.zip .
+          zip -r ../project-gantt-${{ steps.get_version.outputs.VERSION }}.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: cardbord-${{ steps.get_version.outputs.VERSION }}.zip
+          files: project-gantt-${{ steps.get_version.outputs.VERSION }}.zip
           body: |
-            ## Cardbord Plugin v${{ steps.get_version.outputs.VERSION }}
+            ## Project Gantt Plugin v${{ steps.get_version.outputs.VERSION }}
 
             ### Installation
-            1. Download `cardbord-${{ steps.get_version.outputs.VERSION }}.zip`
+            1. Download `project-gantt-${{ steps.get_version.outputs.VERSION }}.zip`
             2. Unzip the archive
             3. In Logseq, go to Settings → Plugins → Load unpacked plugin
             4. Select the unzipped folder

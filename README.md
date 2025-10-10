@@ -40,7 +40,7 @@
 
 ```bash
 git clone <repository-url>
-cd progect-gantt
+cd project-gantt
 npm install
 npm run build
 ```
