@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#4A90E2"/>
+
+  <!-- Gantt Chart Icon -->
+  <!-- Timeline vertical lines -->
+  <line x1="10" y1="8" x2="10" y2="24" stroke="white" stroke-width="1" opacity="0.3"/>
+  <line x1="16" y1="8" x2="16" y2="24" stroke="white" stroke-width="1" opacity="0.3"/>
+  <line x1="22" y1="8" x2="22" y2="24" stroke="white" stroke-width="1" opacity="0.3"/>
+  <line x1="28" y1="8" x2="28" y2="24" stroke="white" stroke-width="1" opacity="0.3"/>
+
+  <!-- Project bars -->
+  <rect x="6" y="10" width="14" height="3" rx="1.5" fill="white"/>
+  <rect x="6" y="16" width="20" height="3" rx="1.5" fill="white" opacity="0.8"/>
+  <rect x="6" y="22" width="10" height="3" rx="1.5" fill="white" opacity="0.6"/>
+
+  <!-- Milestone diamond -->
+  <rect x="24" y="15.5" width="4" height="4" rx="0.5" fill="#FFD93D" transform="rotate(45 26 17.5)"/>
+</svg>

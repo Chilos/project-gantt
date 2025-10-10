@@ -1,0 +1,65 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update version from tag
+        run: npm run update-version
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create release package
+        run: |
+          mkdir -p release/dist
+          cp dist/index.js release/dist/
+          cp manifest.json release/
+          cp package.json release/
+          cp icon.svg release/
+          cd release
+          zip -r ../cardbord-${{ steps.get_version.outputs.VERSION }}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cardbord-${{ steps.get_version.outputs.VERSION }}.zip
+          body: |
+            ## Cardbord Plugin v${{ steps.get_version.outputs.VERSION }}
+
+            ### Installation
+            1. Download `cardbord-${{ steps.get_version.outputs.VERSION }}.zip`
+            2. Unzip the archive
+            3. In Logseq, go to Settings → Plugins → Load unpacked plugin
+            4. Select the unzipped folder
+
+            ### Changes
+            See commit history for details.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

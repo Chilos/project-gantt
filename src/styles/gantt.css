@@ -1,0 +1,424 @@
+/* Gantt Chart Styles */
+
+/* Container */
+.gantt-container {
+  width: 100%;
+  overflow: visible;
+  background: var(--ls-primary-background-color);
+  border: 1px solid var(--ls-border-color);
+  border-radius: 4px;
+  margin: 12px 0;
+  position: relative;
+}
+
+.gantt-container:hover .gantt-edit-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gantt-table {
+  display: inline-block;
+  min-width: 100%;
+  background: var(--ls-primary-background-color);
+  margin-right: 16px;
+  position: relative;
+}
+
+/* Header */
+.gantt-header {
+  display: flex;
+  border-bottom: 1px solid var(--ls-border-color);
+  position: sticky;
+  top: 0;
+  background: var(--ls-primary-background-color);
+  z-index: 10;
+}
+
+.gantt-project-header {
+  width: 200px;
+  min-width: 120px;
+  max-width: 400px;
+  padding: 4px 6px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ls-primary-text-color);
+  border-right: 1px solid var(--ls-border-color);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gantt-column-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+  transition: background 0.15s;
+}
+
+.gantt-column-resizer:hover,
+.gantt-column-resizer.gantt-resizing {
+  background: var(--ls-link-text-color);
+  opacity: 0.5;
+}
+
+.gantt-time-header {
+  flex: 1;
+  overflow-x: hidden;
+}
+
+/* Sprint Row */
+.gantt-sprint-row {
+  display: flex;
+  min-height: 24px;
+}
+
+.gantt-sprint-header {
+  padding: 3px 6px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--ls-secondary-background-color);
+  color: var(--ls-primary-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.gantt-sprint-separator {
+  border-right: 2px solid var(--ls-border-color);
+}
+
+.gantt-sprint-separator-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--ls-border-color);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Day Row */
+.gantt-day-row {
+  display: flex;
+  min-height: 32px;
+}
+
+.gantt-day-header {
+  padding: 2px 2px;
+  text-align: center;
+  font-size: 9px;
+  border-right: 1px solid var(--ls-border-color);
+  color: var(--ls-secondary-text-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gantt-day-number {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.gantt-day-name {
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.gantt-day-header.gantt-current-day {
+  background: var(--ls-link-text-color);
+  color: white;
+  font-weight: 700;
+}
+
+/* Projects */
+.gantt-projects {
+  position: relative;
+}
+
+.gantt-project-row {
+  display: flex;
+  min-height: 36px;
+  border-bottom: 1px solid var(--ls-border-color);
+  align-items: stretch;
+}
+
+.gantt-project-row.gantt-project-main {
+  background: var(--ls-secondary-background-color);
+}
+
+.gantt-project-row.gantt-stage-row {
+  min-height: 32px;
+}
+
+.gantt-project-name {
+  width: 200px;
+  min-width: 120px;
+  max-width: 400px;
+  padding: 6px;
+  font-weight: 500;
+  font-size: 16px;
+  display: flex;
+  align-items: flex-start;
+  color: var(--ls-primary-text-color);
+  border-right: 1px solid var(--ls-border-color);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  flex-shrink: 0;
+  line-height: 1.4;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gantt-project-name.gantt-stage-name {
+  font-weight: 400;
+  font-size: 14px;
+  padding-left: 12px;
+}
+
+.gantt-assignee {
+  color: var(--ls-secondary-text-color);
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.85;
+  display: block;
+  margin-top: 2px;
+}
+
+.gantt-logseq-link {
+  color: var(--ls-link-text-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s, opacity 0.2s;
+  cursor: pointer;
+}
+
+.gantt-logseq-link:hover {
+  border-bottom-color: var(--ls-link-text-color);
+  opacity: 0.8;
+}
+
+.gantt-logseq-link:active {
+  opacity: 0.6;
+}
+
+.gantt-project-timeline {
+  flex: 1;
+  position: relative;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+/* Stage */
+.gantt-stage {
+  position: absolute;
+  height: 37px;
+  border-radius: 3px;
+  padding: 2px 6px;
+  cursor: move;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  transition: box-shadow 0.2s, transform 0.1s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  top: 2px;
+  z-index: 2;
+}
+
+.gantt-stage:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  z-index: 5;
+}
+
+.gantt-stage.gantt-dragging {
+  opacity: 0.85;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: grabbing;
+}
+
+.gantt-stage-days {
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-right: 6px;
+  padding: 0 3px;
+}
+
+.gantt-stage-content {
+  color: #202020;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.gantt-stage-name {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-stage-assignee {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Milestone */
+.gantt-milestone {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  transform: rotate(45deg) translateX(-50%);
+  cursor: move;
+  user-select: none;
+  border: 2px solid #FFD93D;
+  background: #FFD93D;
+  transition: box-shadow 0.2s, transform 0.1s;
+  top: 17px;
+  z-index: 2;
+}
+
+.gantt-milestone:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: rotate(45deg) translateX(-50%) scale(1.1);
+  z-index: 5;
+}
+
+.gantt-milestone.gantt-dragging {
+  opacity: 0.85;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: grabbing;
+}
+
+.gantt-milestone-label {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-45deg);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ls-primary-text-color);
+  background: var(--ls-primary-background-color);
+  padding: 2px 4px;
+  border-radius: 2px;
+  border: 1px solid var(--ls-border-color);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gantt-milestone:hover .gantt-milestone-label {
+  opacity: 1;
+}
+
+/* Resize Handles */
+.gantt-resize-handle {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gantt-stage:hover .gantt-resize-handle {
+  opacity: 1;
+}
+
+.gantt-resize-right {
+  right: -4px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.2));
+}
+
+.gantt-resize-handle:hover,
+.gantt-resize-handle.gantt-resizing {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Boundary Constraint */
+.gantt-boundary-constraint {
+  box-shadow: 0 0 0 2px red !important;
+  animation: boundary-pulse 0.5s ease-in-out;
+}
+
+@keyframes boundary-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px red; }
+  50% { box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.5); }
+}
+
+/* Edit Button */
+.gantt-edit-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 12px;
+  background: var(--ls-link-text-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.gantt-edit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gantt-edit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark Theme Adjustments */
+.dark-theme .gantt-stage {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .gantt-stage:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.dark-theme .gantt-milestone {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
