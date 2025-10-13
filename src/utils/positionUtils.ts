@@ -4,7 +4,7 @@
  */
 
 import type { WorkingDaysConfig } from '../types';
-import { getWorkingDaysBetween, addWorkingDays } from './dateUtils';
+import { getWorkingDaysBetween, addWorkingDays, isWorkingDay } from './dateUtils';
 
 /**
  * Получает позицию даты на временной шкале (в пикселях)
@@ -29,15 +29,26 @@ export function getDateFromPosition(
   cellWidth: number,
   config: WorkingDaysConfig
 ): Date {
-  const workingDays = Math.round(position / cellWidth);
+  const workingDayIndex = Math.round(position / cellWidth);
 
-  // Позиция 0 = startDate
-  if (workingDays <= 0) {
-    return new Date(startDate);
+  // Позиция 0 = первый рабочий день (может быть startDate или позже, если startDate - выходной)
+  if (workingDayIndex <= 0) {
+    // Находим первый рабочий день, начиная со startDate
+    const current = new Date(startDate);
+    while (!isWorkingDay(current, config)) {
+      current.setDate(current.getDate() + 1);
+    }
+    return current;
   }
 
-  // Добавляем рабочие дни к startDate
-  return addWorkingDays(startDate, workingDays, config);
+  // Находим первый рабочий день, начиная со startDate
+  const firstWorkingDay = new Date(startDate);
+  while (!isWorkingDay(firstWorkingDay, config)) {
+    firstWorkingDay.setDate(firstWorkingDay.getDate() + 1);
+  }
+
+  // Добавляем оставшиеся рабочие дни
+  return addWorkingDays(firstWorkingDay, workingDayIndex, config);
 }
 
 /**

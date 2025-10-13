@@ -47,6 +47,25 @@ describe('positionUtils', () => {
       // Mon to next Mon = 5 working days (Tue-Sat skipped) = 5 * 40 = 200
       expect(position).toBe(200);
     });
+
+    it('should handle non-working startDate when calculating position', () => {
+      const startDate = new Date('2025-10-12'); // Sunday
+      const targetDate = new Date('2025-10-13'); // Monday (first working day)
+      const position = getDatePosition(startDate, targetDate, cellWidth, config);
+      // First working day should be at position 0
+      expect(position).toBe(0);
+    });
+
+    it('should calculate positions correctly from non-working startDate', () => {
+      const startDate = new Date('2025-10-12'); // Sunday
+      const monday = new Date('2025-10-13');
+      const tuesday = new Date('2025-10-14');
+      const wednesday = new Date('2025-10-15');
+
+      expect(getDatePosition(startDate, monday, cellWidth, config)).toBe(0);
+      expect(getDatePosition(startDate, tuesday, cellWidth, config)).toBe(40);
+      expect(getDatePosition(startDate, wednesday, cellWidth, config)).toBe(80);
+    });
   });
 
   describe('getDateFromPosition', () => {
@@ -62,6 +81,58 @@ describe('positionUtils', () => {
       const result = getDateFromPosition(startDate, position, cellWidth, config);
       // Should be Wednesday
       expect(result.getDate()).toBe(3);
+    });
+
+    it('should handle non-working startDate (Sunday)', () => {
+      const startDate = new Date('2025-10-12'); // Sunday
+      const result = getDateFromPosition(startDate, 0, cellWidth, config);
+      // Position 0 should be first working day (Monday)
+      expect(result.toDateString()).toBe(new Date('2025-10-13').toDateString());
+      expect(result.getDay()).toBe(1); // Monday
+    });
+
+    it('should handle non-working startDate (Saturday)', () => {
+      const startDate = new Date('2024-01-06'); // Saturday
+      const result = getDateFromPosition(startDate, 0, cellWidth, config);
+      // Position 0 should be first working day (Monday)
+      expect(result.toDateString()).toBe(new Date('2024-01-08').toDateString());
+      expect(result.getDay()).toBe(1); // Monday
+    });
+
+    it('should calculate positions correctly with non-working startDate', () => {
+      const startDate = new Date('2025-10-12'); // Sunday
+      // Position 0 = Monday 2025-10-13
+      // Position 40 = Tuesday 2025-10-14
+      // Position 80 = Wednesday 2025-10-15
+      const result1 = getDateFromPosition(startDate, 0, cellWidth, config);
+      const result2 = getDateFromPosition(startDate, 40, cellWidth, config);
+      const result3 = getDateFromPosition(startDate, 80, cellWidth, config);
+
+      expect(result1.toDateString()).toBe(new Date('2025-10-13').toDateString());
+      expect(result2.toDateString()).toBe(new Date('2025-10-14').toDateString());
+      expect(result3.toDateString()).toBe(new Date('2025-10-15').toDateString());
+    });
+
+    it('should maintain round-trip consistency with non-working startDate', () => {
+      const startDate = new Date('2025-10-12'); // Sunday
+      const testDate = new Date('2025-10-24'); // Friday
+
+      // Date -> Position -> Date should return same date
+      const position = getDatePosition(startDate, testDate, cellWidth, config);
+      const resultDate = getDateFromPosition(startDate, position, cellWidth, config);
+
+      expect(resultDate.toDateString()).toBe(testDate.toDateString());
+    });
+
+    it('should maintain round-trip consistency with working startDate', () => {
+      const startDate = new Date('2024-01-01'); // Monday
+      const testDate = new Date('2024-01-10'); // Wednesday
+
+      // Date -> Position -> Date should return same date
+      const position = getDatePosition(startDate, testDate, cellWidth, config);
+      const resultDate = getDateFromPosition(startDate, position, cellWidth, config);
+
+      expect(resultDate.toDateString()).toBe(testDate.toDateString());
     });
   });
 
