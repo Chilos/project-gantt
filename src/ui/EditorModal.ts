@@ -201,6 +201,28 @@ export class EditorModal {
   }
 
   /**
+   * Обновляет отображение проекта в списке без полного перерендера
+   */
+  private updateProjectListDisplay(project: Project): void {
+    const listContainer = this.modalElement?.querySelector('#gantt-items-list');
+    if (!listContainer) return;
+
+    const projectItem = listContainer.querySelector(`[data-project-id="${project.id}"]`);
+    if (projectItem) {
+      const nameElement = projectItem.querySelector('.gantt-list-item-name');
+      const metaElement = projectItem.querySelector('.gantt-list-item-meta');
+
+      if (nameElement) {
+        nameElement.textContent = project.name;
+      }
+
+      if (metaElement) {
+        metaElement.textContent = `${project.stages.length} этапов, ${project.milestones.length} мелстоунов`;
+      }
+    }
+  }
+
+  /**
    * Выбирает проект для редактирования
    */
   private selectProject(project: Project): void {
@@ -274,11 +296,15 @@ export class EditorModal {
         <div class="gantt-form-actions">
           ${isEdit ? `
             <button class="gantt-btn gantt-btn-danger" data-action="delete-project">Удалить проект</button>
-            <button class="gantt-btn gantt-btn-primary" data-action="update-project">Обновить</button>
           ` : `
             <button class="gantt-btn gantt-btn-primary" data-action="create-project">Создать проект</button>
           `}
         </div>
+        ${isEdit ? `
+          <div class="gantt-form-hint">
+            <small>Изменения будут сохранены при нажатии кнопки "Сохранить" внизу</small>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -297,13 +323,36 @@ export class EditorModal {
     const createBtn = form.querySelector('[data-action="create-project"]');
     createBtn?.addEventListener('click', () => this.handleCreateProject());
 
-    // Обновление проекта
-    const updateBtn = form.querySelector('[data-action="update-project"]');
-    updateBtn?.addEventListener('click', () => this.handleUpdateProject());
-
     // Удаление проекта
     const deleteBtn = form.querySelector('[data-action="delete-project"]');
     deleteBtn?.addEventListener('click', () => this.handleDeleteProject());
+
+    // Автоматическое обновление полей проекта при редактировании
+    if (project) {
+      const nameInput = form.querySelector('#project-name') as HTMLInputElement;
+      const assigneeInput = form.querySelector('#project-assignee') as HTMLInputElement;
+      const layoutSelect = form.querySelector('#project-layout') as HTMLSelectElement;
+
+      nameInput?.addEventListener('input', () => {
+        if (project) {
+          project.name = nameInput.value.trim();
+          this.updateProjectListDisplay(project);
+        }
+      });
+
+      assigneeInput?.addEventListener('input', () => {
+        if (project) {
+          const assigneeName = assigneeInput.value.trim();
+          project.assignee = assigneeName ? { name: assigneeName } : undefined;
+        }
+      });
+
+      layoutSelect?.addEventListener('change', () => {
+        if (project) {
+          project.layout = layoutSelect.value as 'inline' | 'multiline';
+        }
+      });
+    }
 
     if (project) {
       // Добавление этапа
@@ -436,11 +485,15 @@ export class EditorModal {
           <button class="gantt-btn gantt-btn-secondary" data-action="back">← Назад</button>
           ${isEdit ? `
             <button class="gantt-btn gantt-btn-danger" data-action="delete-stage">Удалить</button>
-            <button class="gantt-btn gantt-btn-primary" data-action="update-stage">Обновить</button>
           ` : `
             <button class="gantt-btn gantt-btn-primary" data-action="create-stage">Создать</button>
           `}
         </div>
+        ${isEdit ? `
+          <div class="gantt-form-hint">
+            <small>Изменения будут сохранены при нажатии кнопки "Сохранить" внизу</small>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -465,6 +518,9 @@ export class EditorModal {
       option.addEventListener('click', () => {
         colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
+        if (stage) {
+          stage.color = option.getAttribute('data-color') || stage.color;
+        }
       });
     });
 
@@ -472,13 +528,46 @@ export class EditorModal {
     const createBtn = form.querySelector('[data-action="create-stage"]');
     createBtn?.addEventListener('click', () => this.handleCreateStage(project));
 
-    // Обновление
-    const updateBtn = form.querySelector('[data-action="update-stage"]');
-    updateBtn?.addEventListener('click', () => this.handleUpdateStage(project, stage!));
-
     // Удаление
     const deleteBtn = form.querySelector('[data-action="delete-stage"]');
     deleteBtn?.addEventListener('click', () => this.handleDeleteStage(project, stage!));
+
+    // Автоматическое обновление полей этапа при редактировании
+    if (stage) {
+      const nameInput = form.querySelector('#stage-name') as HTMLInputElement;
+      const startInput = form.querySelector('#stage-start') as HTMLInputElement;
+      const durationInput = form.querySelector('#stage-duration') as HTMLInputElement;
+      const assigneeInput = form.querySelector('#stage-assignee') as HTMLInputElement;
+
+      nameInput?.addEventListener('input', () => {
+        if (stage) {
+          stage.name = nameInput.value.trim();
+          stage.type = stage.name;
+        }
+      });
+
+      startInput?.addEventListener('change', () => {
+        if (stage) {
+          stage.start = parseDateISO(startInput.value);
+        }
+      });
+
+      durationInput?.addEventListener('input', () => {
+        if (stage) {
+          const duration = parseInt(durationInput.value);
+          if (duration > 0) {
+            stage.duration = duration;
+          }
+        }
+      });
+
+      assigneeInput?.addEventListener('input', () => {
+        if (stage) {
+          const assigneeName = assigneeInput.value.trim();
+          stage.assignee = assigneeName ? { name: assigneeName } : undefined;
+        }
+      });
+    }
   }
 
   /**
@@ -538,11 +627,15 @@ export class EditorModal {
           <button class="gantt-btn gantt-btn-secondary" data-action="back">← Назад</button>
           ${isEdit ? `
             <button class="gantt-btn gantt-btn-danger" data-action="delete-milestone">Удалить</button>
-            <button class="gantt-btn gantt-btn-primary" data-action="update-milestone">Обновить</button>
           ` : `
             <button class="gantt-btn gantt-btn-primary" data-action="create-milestone">Создать</button>
           `}
         </div>
+        ${isEdit ? `
+          <div class="gantt-form-hint">
+            <small>Изменения будут сохранены при нажатии кнопки "Сохранить" внизу</small>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -567,6 +660,9 @@ export class EditorModal {
       option.addEventListener('click', () => {
         colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
+        if (milestone) {
+          milestone.color = option.getAttribute('data-color') || undefined;
+        }
       });
     });
 
@@ -574,13 +670,36 @@ export class EditorModal {
     const createBtn = form.querySelector('[data-action="create-milestone"]');
     createBtn?.addEventListener('click', () => this.handleCreateMilestone(project));
 
-    // Обновление
-    const updateBtn = form.querySelector('[data-action="update-milestone"]');
-    updateBtn?.addEventListener('click', () => this.handleUpdateMilestone(project, milestone!));
-
     // Удаление
     const deleteBtn = form.querySelector('[data-action="delete-milestone"]');
     deleteBtn?.addEventListener('click', () => this.handleDeleteMilestone(project, milestone!));
+
+    // Автоматическое обновление полей мелстоуна при редактировании
+    if (milestone) {
+      const nameInput = form.querySelector('#milestone-name') as HTMLInputElement;
+      const dateInput = form.querySelector('#milestone-date') as HTMLInputElement;
+      const assigneeInput = form.querySelector('#milestone-assignee') as HTMLInputElement;
+
+      nameInput?.addEventListener('input', () => {
+        if (milestone) {
+          milestone.name = nameInput.value.trim();
+          milestone.type = milestone.name;
+        }
+      });
+
+      dateInput?.addEventListener('change', () => {
+        if (milestone) {
+          milestone.date = parseDateISO(dateInput.value);
+        }
+      });
+
+      assigneeInput?.addEventListener('input', () => {
+        if (milestone) {
+          const assigneeName = assigneeInput.value.trim();
+          milestone.assignee = assigneeName ? { name: assigneeName } : undefined;
+        }
+      });
+    }
   }
 
   /**
@@ -654,6 +773,24 @@ export class EditorModal {
 
     const isEdit = sprint !== null;
 
+    // Для нового спринта определяем дату начала
+    let defaultStartDate: Date;
+    if (isEdit) {
+      defaultStartDate = sprint.start;
+    } else if (this.data.sprints.length > 0) {
+      // Если есть спринты, берем следующий день после окончания последнего спринта
+      const lastSprint = this.data.sprints[this.data.sprints.length - 1];
+      defaultStartDate = new Date(lastSprint.end.getTime() + 24 * 60 * 60 * 1000);
+    } else {
+      // Если это первый спринт, берем дату начала проекта
+      defaultStartDate = this.data.startDate;
+    }
+
+    // Для нового спринта вычисляем дату окончания через 2 недели от даты начала (13 дней, чтобы закончить в воскресенье)
+    const defaultEndDate = isEdit
+      ? sprint.end
+      : new Date(defaultStartDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+
     formContainer.innerHTML = `
       <div class="gantt-form">
         <h3>${isEdit ? 'Редактирование спринта' : 'Новый спринт'}</h3>
@@ -665,22 +802,26 @@ export class EditorModal {
 
         <div class="gantt-form-group">
           <label>Дата начала *</label>
-          <input type="date" id="sprint-start" value="${isEdit ? formatDateISO(sprint.start) : formatDateISO(this.data.startDate)}" />
+          <input type="date" id="sprint-start" value="${formatDateISO(defaultStartDate)}" />
         </div>
 
         <div class="gantt-form-group">
           <label>Дата окончания *</label>
-          <input type="date" id="sprint-end" value="${isEdit ? formatDateISO(sprint.end) : formatDateISO(this.data.endDate)}" />
+          <input type="date" id="sprint-end" value="${formatDateISO(defaultEndDate)}" />
         </div>
 
         <div class="gantt-form-actions">
           ${isEdit ? `
             <button class="gantt-btn gantt-btn-danger" data-action="delete-sprint">Удалить</button>
-            <button class="gantt-btn gantt-btn-primary" data-action="update-sprint">Обновить</button>
           ` : `
             <button class="gantt-btn gantt-btn-primary" data-action="create-sprint">Создать</button>
           `}
         </div>
+        ${isEdit ? `
+          <div class="gantt-form-hint">
+            <small>Изменения будут сохранены при нажатии кнопки "Сохранить" внизу</small>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -695,17 +836,51 @@ export class EditorModal {
     const form = this.modalElement?.querySelector('#gantt-editor-form');
     if (!form) return;
 
+    const startInput = form.querySelector('#sprint-start') as HTMLInputElement;
+    const endInput = form.querySelector('#sprint-end') as HTMLInputElement;
+
+    // Для создания нового спринта: автоматически пересчитываем дату окончания при изменении даты начала
+    if (!sprint) {
+      startInput?.addEventListener('change', () => {
+        const startDate = parseDateISO(startInput.value);
+        // Автоматически устанавливаем дату окончания через 2 недели (13 дней, чтобы закончить в воскресенье)
+        const newEndDate = new Date(startDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+        if (endInput) {
+          endInput.value = formatDateISO(newEndDate);
+        }
+      });
+    }
+
     // Создание
     const createBtn = form.querySelector('[data-action="create-sprint"]');
     createBtn?.addEventListener('click', () => this.handleCreateSprint());
 
-    // Обновление
-    const updateBtn = form.querySelector('[data-action="update-sprint"]');
-    updateBtn?.addEventListener('click', () => this.handleUpdateSprint(sprint!));
-
     // Удаление
     const deleteBtn = form.querySelector('[data-action="delete-sprint"]');
     deleteBtn?.addEventListener('click', () => this.handleDeleteSprint(sprint!));
+
+    // Автоматическое обновление полей спринта при редактировании
+    if (sprint) {
+      const nameInput = form.querySelector('#sprint-name') as HTMLInputElement;
+
+      nameInput?.addEventListener('input', () => {
+        if (sprint) {
+          sprint.name = nameInput.value.trim();
+        }
+      });
+
+      startInput?.addEventListener('change', () => {
+        if (sprint) {
+          sprint.start = parseDateISO(startInput.value);
+        }
+      });
+
+      endInput?.addEventListener('change', () => {
+        if (sprint) {
+          sprint.end = parseDateISO(endInput.value);
+        }
+      });
+    }
   }
 
   /**
@@ -773,15 +948,11 @@ export class EditorModal {
           <small>Вертикальная линия, показывающая сегодняшнюю дату</small>
         </div>
 
-        <div class="gantt-form-actions">
-          <button class="gantt-btn gantt-btn-primary" data-action="update-settings">Применить</button>
+        <div class="gantt-settings-info">
+          <small>Изменения будут применены при нажатии кнопки "Сохранить" внизу</small>
         </div>
       </div>
     `;
-
-    // Обработчики
-    const updateBtn = formContainer.querySelector('[data-action="update-settings"]');
-    updateBtn?.addEventListener('click', () => this.handleUpdateSettings());
   }
 
   // === ОБРАБОТЧИКИ ДЕЙСТВИЙ ===
@@ -808,26 +979,6 @@ export class EditorModal {
     this.data.projects.push(newProject);
     this.renderProjectsTab();
     logseq.UI.showMsg('✅ Проект создан', 'success');
-  }
-
-  private handleUpdateProject(): void {
-    if (!this.selectedProject) return;
-
-    const name = (this.modalElement?.querySelector('#project-name') as HTMLInputElement)?.value.trim();
-    const assigneeName = (this.modalElement?.querySelector('#project-assignee') as HTMLInputElement)?.value.trim();
-    const layout = (this.modalElement?.querySelector('#project-layout') as HTMLSelectElement)?.value as 'inline' | 'multiline';
-
-    if (!name) {
-      logseq.UI.showMsg('Введите название проекта', 'warning');
-      return;
-    }
-
-    this.selectedProject.name = name;
-    this.selectedProject.assignee = assigneeName ? { name: assigneeName } : undefined;
-    this.selectedProject.layout = layout;
-
-    this.renderProjectsTab();
-    logseq.UI.showMsg('✅ Проект обновлен', 'success');
   }
 
   private handleDeleteProject(): void {
@@ -865,38 +1016,16 @@ export class EditorModal {
     };
 
     project.stages.push(newStage);
+    this.updateProjectListDisplay(project);
     this.selectProject(project);
     logseq.UI.showMsg('✅ Этап создан', 'success');
-  }
-
-  private handleUpdateStage(project: Project, stage: Stage): void {
-    const name = (this.modalElement?.querySelector('#stage-name') as HTMLInputElement)?.value.trim();
-    const startStr = (this.modalElement?.querySelector('#stage-start') as HTMLInputElement)?.value;
-    const duration = parseInt((this.modalElement?.querySelector('#stage-duration') as HTMLInputElement)?.value);
-    const assigneeName = (this.modalElement?.querySelector('#stage-assignee') as HTMLInputElement)?.value.trim();
-    const selectedColor = this.modalElement?.querySelector('.gantt-color-option.selected');
-    const color = selectedColor?.getAttribute('data-color') || stage.color;
-
-    if (!name || !startStr || !duration) {
-      logseq.UI.showMsg('Заполните обязательные поля', 'warning');
-      return;
-    }
-
-    stage.name = name;
-    stage.type = name;
-    stage.start = parseDateISO(startStr);
-    stage.duration = duration;
-    stage.assignee = assigneeName ? { name: assigneeName } : undefined;
-    stage.color = color;
-
-    this.selectProject(project);
-    logseq.UI.showMsg('✅ Этап обновлен', 'success');
   }
 
   private handleDeleteStage(project: Project, stage: Stage): void {
     if (!confirm(`Удалить этап "${stage.name}"?`)) return;
 
     project.stages = project.stages.filter(s => s.id !== stage.id);
+    this.updateProjectListDisplay(project);
     this.selectProject(project);
     logseq.UI.showMsg('✅ Этап удален', 'success');
   }
@@ -923,36 +1052,16 @@ export class EditorModal {
     };
 
     project.milestones.push(newMilestone);
+    this.updateProjectListDisplay(project);
     this.selectProject(project);
     logseq.UI.showMsg('✅ Мелстоун создан', 'success');
-  }
-
-  private handleUpdateMilestone(project: Project, milestone: Milestone): void {
-    const name = (this.modalElement?.querySelector('#milestone-name') as HTMLInputElement)?.value.trim();
-    const dateStr = (this.modalElement?.querySelector('#milestone-date') as HTMLInputElement)?.value;
-    const assigneeName = (this.modalElement?.querySelector('#milestone-assignee') as HTMLInputElement)?.value.trim();
-    const selectedColor = this.modalElement?.querySelector('.gantt-color-option.selected');
-    const color = selectedColor?.getAttribute('data-color');
-
-    if (!name || !dateStr) {
-      logseq.UI.showMsg('Заполните обязательные поля', 'warning');
-      return;
-    }
-
-    milestone.name = name;
-    milestone.type = name;
-    milestone.date = parseDateISO(dateStr);
-    milestone.assignee = assigneeName ? { name: assigneeName } : undefined;
-    milestone.color = color || undefined;
-
-    this.selectProject(project);
-    logseq.UI.showMsg('✅ Мелстоун обновлен', 'success');
   }
 
   private handleDeleteMilestone(project: Project, milestone: Milestone): void {
     if (!confirm(`Удалить мелстоун "${milestone.name}"?`)) return;
 
     project.milestones = project.milestones.filter(m => m.id !== milestone.id);
+    this.updateProjectListDisplay(project);
     this.selectProject(project);
     logseq.UI.showMsg('✅ Мелстоун удален', 'success');
   }
@@ -979,24 +1088,6 @@ export class EditorModal {
     logseq.UI.showMsg('✅ Спринт создан', 'success');
   }
 
-  private handleUpdateSprint(sprint: Sprint): void {
-    const name = (this.modalElement?.querySelector('#sprint-name') as HTMLInputElement)?.value.trim();
-    const startStr = (this.modalElement?.querySelector('#sprint-start') as HTMLInputElement)?.value;
-    const endStr = (this.modalElement?.querySelector('#sprint-end') as HTMLInputElement)?.value;
-
-    if (!name || !startStr || !endStr) {
-      logseq.UI.showMsg('Заполните все поля', 'warning');
-      return;
-    }
-
-    sprint.name = name;
-    sprint.start = parseDateISO(startStr);
-    sprint.end = parseDateISO(endStr);
-
-    this.renderSprintsTab();
-    logseq.UI.showMsg('✅ Спринт обновлен', 'success');
-  }
-
   private handleDeleteSprint(sprint: Sprint): void {
     if (!confirm(`Удалить спринт "${sprint.name}"?`)) return;
 
@@ -1005,7 +1096,31 @@ export class EditorModal {
     logseq.UI.showMsg('✅ Спринт удален', 'success');
   }
 
-  private handleUpdateSettings(): void {
+  private async handleSave(): Promise<void> {
+    try {
+      // Если открыта вкладка настроек, применяем изменения перед сохранением
+      const activeTab = this.modalElement?.querySelector('.gantt-tab.active');
+      if (activeTab && activeTab.getAttribute('data-tab') === 'settings') {
+        this.applySettingsChanges();
+      }
+
+      await this.storage.save(this.blockUuid, this.data);
+      logseq.UI.showMsg('✅ Все изменения сохранены', 'success');
+      this.hide();
+
+      // Logseq автоматически перерисует блок после обновления
+      // Не нужно перезагружать страницу - это убивает слушатели событий
+      console.log(`[${PLUGIN_NAME}] Data saved, modal closed. Logseq will re-render the block automatically.`);
+    } catch (error) {
+      console.error(`[${PLUGIN_NAME}] Failed to save:`, error);
+      logseq.UI.showMsg('❌ Ошибка сохранения', 'error');
+    }
+  }
+
+  /**
+   * Применяет изменения настроек из формы к this.data
+   */
+  private applySettingsChanges(): void {
     const startStr = (this.modalElement?.querySelector('#settings-start-date') as HTMLInputElement)?.value;
     const endStr = (this.modalElement?.querySelector('#settings-end-date') as HTMLInputElement)?.value;
     const includeStr = (this.modalElement?.querySelector('#settings-include-dates') as HTMLInputElement)?.value;
@@ -1013,8 +1128,7 @@ export class EditorModal {
     const showTodayLineCheckbox = this.modalElement?.querySelector('#settings-show-today-line') as HTMLInputElement;
 
     if (!startStr || !endStr) {
-      logseq.UI.showMsg('Заполните даты начала и окончания', 'warning');
-      return;
+      return; // Валидация будет в handleSave
     }
 
     // Обновляем даты
@@ -1033,23 +1147,6 @@ export class EditorModal {
 
     // Обновляем настройку линии текущего дня
     this.data.showTodayLine = showTodayLineCheckbox?.checked ?? true;
-
-    logseq.UI.showMsg('✅ Настройки обновлены', 'success');
-  }
-
-  private async handleSave(): Promise<void> {
-    try {
-      await this.storage.save(this.blockUuid, this.data);
-      logseq.UI.showMsg('✅ Все изменения сохранены', 'success');
-      this.hide();
-
-      // Logseq автоматически перерисует блок после обновления
-      // Не нужно перезагружать страницу - это убивает слушатели событий
-      console.log(`[${PLUGIN_NAME}] Data saved, modal closed. Logseq will re-render the block automatically.`);
-    } catch (error) {
-      console.error(`[${PLUGIN_NAME}] Failed to save:`, error);
-      logseq.UI.showMsg('❌ Ошибка сохранения', 'error');
-    }
   }
 
   /**
