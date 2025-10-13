@@ -82,6 +82,105 @@ describe('encoding utilities', () => {
       expect(decoded).toBeDefined();
       expect(decoded.projects).toEqual([]);
     });
+
+    it('should decode old format with double encoding (backward compatibility)', () => {
+      // Create data in old format (with encodeURIComponent + btoa)
+      const testData = {
+        projects: [{
+          id: 'p1',
+          name: 'Test',
+          stages: [{
+            id: 's1',
+            name: 'Stage',
+            type: 'Stage',
+            start: '2024-01-01',
+            duration: 5,
+            color: '#FF0000',
+          }],
+          milestones: [],
+        }],
+        sprints: [],
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        excludeWeekdays: [0, 6],
+        includeDates: [],
+        excludeDates: [],
+      };
+
+      // Encode using old method (double encoding)
+      const oldEncoded = btoa(encodeURIComponent(JSON.stringify(testData)));
+
+      // Should successfully decode old format
+      const decoded = decodeGanttData(oldEncoded);
+      expect(decoded).toBeDefined();
+      expect(decoded.projects).toHaveLength(1);
+      expect(decoded.projects[0].name).toBe('Test');
+      expect(decoded.projects[0].stages[0].name).toBe('Stage');
+    });
+
+    it('should restore type field from name when missing (optimization)', () => {
+      const original = createDefaultGanttData();
+      original.projects = [{
+        id: 'proj1',
+        name: 'Test',
+        stages: [{
+          id: 's1',
+          name: 'MyStage',
+          type: 'MyStage',
+          start: new Date('2024-01-01'),
+          duration: 5,
+          color: '#FF0000',
+        }],
+        milestones: [{
+          id: 'm1',
+          name: 'MyMilestone',
+          type: 'MyMilestone',
+          date: new Date('2024-01-15'),
+        }],
+      }];
+
+      // Encode (removes type field) and decode (restores type from name)
+      const encoded = encodeGanttData(original);
+      const decoded = decodeGanttData(encoded);
+
+      expect(decoded.projects[0].stages[0].type).toBe('MyStage');
+      expect(decoded.projects[0].milestones[0].type).toBe('MyMilestone');
+    });
+
+    it('should produce smaller encoded output than old format', () => {
+      const testData = createDefaultGanttData();
+      testData.projects = [{
+        id: 'p1',
+        name: 'Project',
+        stages: [
+          { id: 's1', name: 'Stage1', type: 'Stage1', start: new Date('2024-01-01'), duration: 5, color: '#FF0000' },
+          { id: 's2', name: 'Stage2', type: 'Stage2', start: new Date('2024-01-10'), duration: 3, color: '#00FF00' },
+        ],
+        milestones: [],
+      }];
+
+      // New optimized encoding
+      const newEncoded = encodeGanttData(testData);
+
+      // Old double-encoded format (for comparison)
+      const json = JSON.stringify({
+        ...testData,
+        startDate: testData.startDate.toISOString().split('T')[0],
+        endDate: testData.endDate.toISOString().split('T')[0],
+        projects: testData.projects.map(p => ({
+          ...p,
+          stages: p.stages.map(s => ({
+            ...s,
+            start: s.start.toISOString().split('T')[0],
+          })),
+        })),
+      });
+      const oldEncoded = btoa(encodeURIComponent(json));
+
+      // New format should be significantly smaller
+      expect(newEncoded.length).toBeLessThan(oldEncoded.length);
+      expect(newEncoded.length / oldEncoded.length).toBeLessThan(0.6); // At least 40% smaller
+    });
   });
 
   describe('sanitizeGanttData', () => {

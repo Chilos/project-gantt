@@ -51,6 +51,35 @@ function updateJsonFile(filePath, version) {
     }
 }
 
+function updateReadme(version) {
+    const readmePath = path.join(__dirname, '..', 'README.md');
+
+    if (!fs.existsSync(readmePath)) {
+        console.warn(`⚠️  README.md not found, skipping`);
+        return false;
+    }
+
+    try {
+        let content = fs.readFileSync(readmePath, 'utf8');
+
+        // Находим и заменяем badge версии
+        const versionBadgeRegex = /!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[\d.]+-(blue|green|red|orange|yellow)\.svg\)/;
+        const oldMatch = content.match(versionBadgeRegex);
+        const oldVersion = oldMatch ? oldMatch[0].match(/version-([\d.]+)-/)[1] : 'unknown';
+
+        const newBadge = `![Version](https://img.shields.io/badge/version-${version}-blue.svg)`;
+        content = content.replace(versionBadgeRegex, newBadge);
+
+        fs.writeFileSync(readmePath, content, 'utf8');
+
+        console.log(`✅ Updated README.md: ${oldVersion} → ${version}`);
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to update README.md:`, error.message);
+        return false;
+    }
+}
+
 function main() {
     console.log('🔄 Updating version from git tag...\n');
 
@@ -58,10 +87,11 @@ function main() {
 
     const packageUpdated = updateJsonFile('package.json', version);
     const manifestUpdated = updateJsonFile('manifest.json', version);
+    const readmeUpdated = updateReadme(version);
 
     console.log('\n' + '='.repeat(50));
 
-    if (packageUpdated && manifestUpdated) {
+    if (packageUpdated && manifestUpdated && readmeUpdated) {
         console.log('✨ Version update completed successfully!');
         process.exit(0);
     } else {

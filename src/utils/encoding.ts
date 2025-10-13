@@ -25,36 +25,51 @@ export function createDefaultGanttData(): GanttData {
 
 /**
  * Преобразует GanttData в сериализуемый формат (Date -> string)
+ * Оптимизирован для минимального размера: удаляет избыточные поля
  */
 export function toSerializable(data: GanttData): SerializableGanttData {
   return {
     projects: data.projects.map(project => ({
-      ...project,
+      id: project.id,
+      name: project.name,
+      ...(project.assignee && { assignee: project.assignee }),
       stages: project.stages.map(stage => ({
-        ...stage,
+        id: stage.id,
+        name: stage.name,
+        // type убран - он дублирует name, восстановим при декодировании
         start: formatDateISO(stage.start),
+        duration: stage.duration,
+        ...(stage.assignee && { assignee: stage.assignee }),
+        color: stage.color,
       })),
       milestones: project.milestones.map(milestone => ({
-        ...milestone,
+        id: milestone.id,
+        name: milestone.name,
+        // type убран - он дублирует name, восстановим при декодировании
         date: formatDateISO(milestone.date),
+        ...(milestone.assignee && { assignee: milestone.assignee }),
+        ...(milestone.color && { color: milestone.color }),
       })),
+      ...(project.layout && { layout: project.layout }),
     })),
     sprints: data.sprints.map(sprint => ({
-      ...sprint,
+      id: sprint.id,
+      name: sprint.name,
       start: formatDateISO(sprint.start),
       end: formatDateISO(sprint.end),
     })),
     startDate: formatDateISO(data.startDate),
     endDate: formatDateISO(data.endDate),
     excludeWeekdays: data.excludeWeekdays,
-    includeDates: data.includeDates,
-    excludeDates: data.excludeDates,
-    showTodayLine: data.showTodayLine,
+    ...(data.includeDates.length > 0 && { includeDates: data.includeDates }),
+    ...(data.excludeDates.length > 0 && { excludeDates: data.excludeDates }),
+    ...(data.showTodayLine !== undefined && { showTodayLine: data.showTodayLine }),
   };
 }
 
 /**
  * Преобразует сериализуемый формат обратно в GanttData (string -> Date)
+ * Восстанавливает поля, удаленные при сериализации для оптимизации
  */
 export function fromSerializable(data: SerializableGanttData): GanttData {
   return {
@@ -62,12 +77,15 @@ export function fromSerializable(data: SerializableGanttData): GanttData {
       ...project,
       stages: project.stages.map(stage => ({
         ...stage,
+        type: (stage as any).type || stage.name, // Восстанавливаем type из name, если его нет
         start: parseDateISO(stage.start),
       })),
       milestones: project.milestones.map(milestone => ({
         ...milestone,
+        type: (milestone as any).type || milestone.name, // Восстанавливаем type из name, если его нет
         date: parseDateISO(milestone.date),
       })),
+      layout: project.layout || 'inline',
     })),
     sprints: data.sprints.map(sprint => ({
       ...sprint,
@@ -90,7 +108,8 @@ export function encodeGanttData(data: GanttData): string {
   try {
     const serializable = toSerializable(data);
     const json = JSON.stringify(serializable);
-    return btoa(encodeURIComponent(json));
+    // Используем прямое base64 кодирование без encodeURIComponent для меньшего размера
+    return btoa(unescape(encodeURIComponent(json)));
   } catch (error) {
     console.error('[Project Gantt] Encoding error:', error);
     throw new Error('Failed to encode gantt data');
@@ -106,7 +125,18 @@ export function decodeGanttData(encoded: string): GanttData {
       return createDefaultGanttData();
     }
 
-    const json = decodeURIComponent(atob(encoded));
+    let json: string;
+    const decoded = atob(encoded);
+
+    // Проверяем, начинается ли с % (признак encodeURIComponent)
+    if (decoded.startsWith('%')) {
+      // Старый формат с encodeURIComponent
+      json = decodeURIComponent(decoded);
+    } else {
+      // Новый формат (UTF-8 через escape/unescape)
+      json = decodeURIComponent(escape(decoded));
+    }
+
     const serializable = JSON.parse(json) as SerializableGanttData;
     return fromSerializable(serializable);
   } catch (error) {
