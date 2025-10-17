@@ -14,8 +14,6 @@ const plugin = new ProjectGanttPlugin();
  * Main entry point
  */
 async function main() {
-  console.log('[Project Gantt] Starting plugin...');
-
   try {
     await plugin.initialize();
   } catch (error) {
@@ -30,7 +28,6 @@ logseq.beforeunload(async () => {
 });
 
 // Start the plugin
-console.log('[Project Gantt] Waiting for Logseq ready...');
 logseq.ready(main).catch((err: Error) => {
   console.error('[Project Gantt] Plugin failed to load:', err);
 });

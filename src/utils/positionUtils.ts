@@ -4,17 +4,27 @@
  */
 
 import type { WorkingDaysConfig } from '../types';
-import { getWorkingDaysBetween, addWorkingDays, isWorkingDay } from './dateUtils';
+import { getWorkingDaysBetween, addWorkingDays, isWorkingDay, getWeekStart } from './dateUtils';
 
 /**
  * Получает позицию даты на временной шкале (в пикселях)
+ * Поддерживает режимы 'day' и 'week'
  */
 export function getDatePosition(
   startDate: Date,
   targetDate: Date,
   cellWidth: number,
-  config: WorkingDaysConfig
+  config: WorkingDaysConfig,
+  timeScale: 'day' | 'week' = 'day'
 ): number {
+  if (timeScale === 'week') {
+    // Для недельного режима считаем количество недель между понедельниками
+    const startWeek = getWeekStart(startDate);
+    const targetWeek = getWeekStart(targetDate);
+    const weeksDiff = Math.floor((targetWeek.getTime() - startWeek.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(0, weeksDiff) * cellWidth;
+  }
+
   const workingDays = getWorkingDaysBetween(startDate, targetDate, config);
   // Если дата = startDate, workingDays = 1, позиция должна быть 0
   return Math.max(0, workingDays - 1) * cellWidth;
@@ -22,13 +32,24 @@ export function getDatePosition(
 
 /**
  * Получает дату из позиции на временной шкале
+ * Поддерживает режимы 'day' и 'week'
  */
 export function getDateFromPosition(
   startDate: Date,
   position: number,
   cellWidth: number,
-  config: WorkingDaysConfig
+  config: WorkingDaysConfig,
+  timeScale: 'day' | 'week' = 'day'
 ): Date {
+  if (timeScale === 'week') {
+    // Для недельного режима добавляем недели
+    const weekIndex = Math.round(position / cellWidth);
+    const startWeek = getWeekStart(startDate);
+    const result = new Date(startWeek);
+    result.setDate(result.getDate() + weekIndex * 7);
+    return result;
+  }
+
   const workingDayIndex = Math.round(position / cellWidth);
 
   // Позиция 0 = первый рабочий день (может быть startDate или позже, если startDate - выходной)
@@ -53,16 +74,18 @@ export function getDateFromPosition(
 
 /**
  * Получает границы позиций для временной шкалы
+ * Поддерживает режимы 'day' и 'week'
  */
 export function getPositionLimits(
   startDate: Date,
   endDate: Date,
   cellWidth: number,
-  config: WorkingDaysConfig
+  config: WorkingDaysConfig,
+  timeScale: 'day' | 'week' = 'day'
 ): { minPosition: number; maxPosition: number } {
   const minPosition = 0;
-  // maxPosition должен включать весь последний день, добавляем +1 cellWidth
-  const maxPosition = getDatePosition(startDate, endDate, cellWidth, config) + cellWidth;
+  // maxPosition должен включать весь последний день/неделю, добавляем +1 cellWidth
+  const maxPosition = getDatePosition(startDate, endDate, cellWidth, config, timeScale) + cellWidth;
 
   return { minPosition, maxPosition };
 }

@@ -46,6 +46,11 @@ export class VisualEditor {
     this.storage = new GanttDataManager();
     // Получаем правильный document для iframe Logseq
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
+
+    // Для недельного режима ширина ячейки в 2 раза больше
+    const timeScale = data.timeScale || 'day';
+    this.cellWidth = timeScale === 'week' ? DEFAULT_CELL_WIDTH * 2 : DEFAULT_CELL_WIDTH;
+
     this.dragState = {
       isDragging: false,
       isResizing: false,
@@ -63,8 +68,6 @@ export class VisualEditor {
    */
   show(): void {
     // TODO: Implement modal UI
-    // For now, just log
-    console.log(`[${PLUGIN_NAME}] Visual editor would show here`);
     logseq.UI.showMsg('Визуальный редактор в разработке. Пока доступно только чтение.', 'info');
   }
 
@@ -74,15 +77,11 @@ export class VisualEditor {
   setupEventListeners(container: HTMLElement): void {
     this.container = container;
 
-    console.log(`[${PLUGIN_NAME}] Setting up drag-and-drop listeners`);
-
     // Обработка перетаскивания
     container.addEventListener('mousedown', this.handleMouseDown.bind(this));
     // Используем правильный document для iframe
     this.doc.addEventListener('mousemove', this.handleMouseMove.bind(this));
     this.doc.addEventListener('mouseup', this.handleMouseUp.bind(this));
-
-    console.log(`[${PLUGIN_NAME}] Drag-and-drop listeners attached to`, this.doc === document ? 'document' : 'parent.document');
   }
 
   /**
@@ -167,7 +166,8 @@ export class VisualEditor {
       if (!stage || !this.dragState.initialStageStart) return;
 
       const config = this.getWorkingDaysConfig();
-      const startPosition = getDatePosition(this.data.startDate, stage.start, this.cellWidth, config);
+      const timeScale = this.data.timeScale || 'day';
+      const startPosition = getDatePosition(this.data.startDate, stage.start, this.cellWidth, config, timeScale);
 
       // Ограничиваем минимальную ширину
       const minMouseX = startPosition + this.cellWidth * 0.5;
@@ -181,18 +181,23 @@ export class VisualEditor {
       const x = e.clientX - timelineRect.left - this.dragState.dragOffset.x;
       let gridPosition = snapToGrid(x, this.cellWidth);
 
-      // Для milestone добавляем половину ширины ячейки, чтобы магнититься к центру
+      // Для milestone добавляем фиксированное смещение
       if (this.dragState.dragType === 'milestone') {
-        gridPosition = gridPosition + 10;
+        const timeScale = this.data.timeScale || 'day';
+        // В режиме дней: 20px, в режиме недель: 40px
+        const offset = timeScale === 'week' ? 27 : 10;
+        gridPosition = gridPosition + offset;
       }
 
       // Ограничиваем перетаскивание в пределах временной шкалы
       const config = this.getWorkingDaysConfig();
+      const timeScale = this.data.timeScale || 'day';
       const { minPosition, maxPosition } = getPositionLimits(
         this.data.startDate,
         this.data.endDate,
         this.cellWidth,
-        config
+        config,
+        timeScale
       );
 
       let constrainedPosition = gridPosition;
@@ -200,8 +205,9 @@ export class VisualEditor {
         const stageWidth = parseInt(this.dragState.dragTarget.style.width) || 0;
         constrainedPosition = constrainPosition(gridPosition, stageWidth, minPosition, maxPosition);
       } else if (this.dragState.dragType === 'milestone') {
-        // Для milestone учитываем, что позиция указывает на центр
-        constrainedPosition = Math.max(minPosition + (this.cellWidth / 2), Math.min(maxPosition + (this.cellWidth / 2), gridPosition));
+        // Для milestone учитываем фиксированное смещение
+        const offset = timeScale === 'week' ? 27 : 10;
+        constrainedPosition = Math.max(minPosition + offset, Math.min(maxPosition + offset, gridPosition));
       } else {
         constrainedPosition = constrainPosition(gridPosition, 0, minPosition, maxPosition);
       }
@@ -248,7 +254,8 @@ export class VisualEditor {
 
         // Финальная привязка к сетке
         const config = this.getWorkingDaysConfig();
-        const finalPosition = getDatePosition(this.data.startDate, stage.start, this.cellWidth, config);
+        const timeScale = this.data.timeScale || 'day';
+        const finalPosition = getDatePosition(this.data.startDate, stage.start, this.cellWidth, config, timeScale);
         const finalWidth = getWidthFromDuration(stage.duration, this.cellWidth);
 
         this.dragState.dragTarget.style.left = `${finalPosition}px`;
@@ -299,13 +306,16 @@ export class VisualEditor {
   private updateItemPosition(element: HTMLElement): void {
     let leftValue = parseFloat(element.style.left.replace('px', ''));
 
-    // Для milestone нужно вычесть половину ширины ячейки, так как leftValue указывает на центр
+    // Для milestone нужно вычесть фиксированное смещение
     if (this.dragState.dragType === 'milestone') {
-      leftValue = leftValue - (this.cellWidth / 2);
+      const timeScale = this.data.timeScale || 'day';
+      const offset = timeScale === 'week' ? 27 : 10;
+      leftValue = leftValue - offset;
     }
 
     const config = this.getWorkingDaysConfig();
-    const newDate = getDateFromPosition(this.data.startDate, leftValue, this.cellWidth, config);
+    const timeScale = this.data.timeScale || 'day';
+    const newDate = getDateFromPosition(this.data.startDate, leftValue, this.cellWidth, config, timeScale);
 
     if (this.dragState.dragType === 'stage') {
       const stageId = element.dataset.stageId;

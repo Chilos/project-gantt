@@ -54,6 +54,8 @@ export interface GanttData {
   includeDates: string[]; // Конкретные даты для включения (формат YYYY-MM-DD)
   excludeDates: string[]; // Конкретные даты для исключения (формат YYYY-MM-DD)
   showTodayLine?: boolean; // Показывать вертикальную линию текущего дня
+  timeScale: 'day' | 'week'; // Масштаб времени: задается при создании, не может быть изменен
+  weekStartsOn?: 0 | 1; // День начала недели: 0 = воскресенье, 1 = понедельник (по умолчанию 1)
 }
 
 // ===== SERIALIZABLE DATA TYPES (для JSON) =====
@@ -102,6 +104,8 @@ export interface SerializableGanttData {
   includeDates: string[];
   excludeDates: string[];
   showTodayLine?: boolean;
+  timeScale: 'day' | 'week'; // Обязательное поле, задается при создании
+  weekStartsOn?: 0 | 1;
 }
 
 // ===== UI TYPES =====

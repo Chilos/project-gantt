@@ -6,7 +6,7 @@
 import type { GanttData, Project, Stage, Milestone, Sprint } from '../types';
 import { GanttDataManager } from '../storage/GanttDataManager';
 import { generateId } from '../utils/encoding';
-import { formatDateISO, parseDateISO } from '../utils/dateUtils';
+import { formatDateISO, parseDateISO, getWeekStart, getWeekEnd } from '../utils/dateUtils';
 import { DEFAULT_STAGE_COLORS, DEFAULT_MILESTONE_COLORS, PLUGIN_NAME } from '../utils/constants';
 
 export class EditorModal {
@@ -29,11 +29,9 @@ export class EditorModal {
    * Показывает модальное окно редактора
    */
   show(): void {
-    console.log(`[${PLUGIN_NAME}] EditorModal.show() called`);
     this.createModal();
     this.renderModalContent();
     this.doc.body.appendChild(this.modalElement!);
-    console.log(`[${PLUGIN_NAME}] Modal appended to body`);
   }
 
   /**
@@ -395,12 +393,15 @@ export class EditorModal {
    * Рендерит элемент этапа в списке
    */
   private renderStageListItem(stage: Stage): string {
+    const timeScale = this.data.timeScale || 'day';
+    const durationLabel = timeScale === 'week' ? 'недель' : 'дней';
+
     return `
       <div class="gantt-stage-item" data-stage-id="${stage.id}">
         <div class="gantt-stage-color" style="background-color: ${stage.color}"></div>
         <div class="gantt-stage-info">
           <div class="gantt-stage-name">${this.escapeHtml(stage.name)}</div>
-          <div class="gantt-stage-meta">${formatDateISO(stage.start)} • ${stage.duration} дней</div>
+          <div class="gantt-stage-meta">${formatDateISO(stage.start)} • ${stage.duration} ${durationLabel}</div>
         </div>
         <button class="gantt-edit-btn" title="Редактировать">✎</button>
       </div>
@@ -445,6 +446,8 @@ export class EditorModal {
     if (!formContainer) return;
 
     const isEdit = stage !== null;
+    const timeScale = this.data.timeScale || 'day';
+    const durationLabel = timeScale === 'week' ? 'недель' : 'дней';
 
     formContainer.innerHTML = `
       <div class="gantt-form">
@@ -461,8 +464,9 @@ export class EditorModal {
         </div>
 
         <div class="gantt-form-group">
-          <label>Длительность (дней) *</label>
+          <label>Длительность (${durationLabel}) *</label>
           <input type="number" id="stage-duration" min="1" value="${isEdit ? stage.duration : 5}" />
+          <small>${timeScale === 'week' ? 'Количество недель' : 'Количество календарных дней'}</small>
         </div>
 
         <div class="gantt-form-group">
@@ -742,12 +746,36 @@ export class EditorModal {
    * Рендерит элемент спринта в списке
    */
   private renderSprintListItem(sprint: Sprint): string {
+    // Показываем реальные даты начала и окончания спринта
     return `
       <div class="gantt-list-item" data-sprint-id="${sprint.id}">
         <div class="gantt-list-item-name">${this.escapeHtml(sprint.name)}</div>
         <div class="gantt-list-item-meta">${formatDateISO(sprint.start)} - ${formatDateISO(sprint.end)}</div>
       </div>
     `;
+  }
+
+  /**
+   * Обновляет отображение спринта в списке без полного перерендера
+   */
+  private updateSprintListDisplay(sprint: Sprint): void {
+    const listContainer = this.modalElement?.querySelector('#gantt-items-list');
+    if (!listContainer) return;
+
+    const sprintItem = listContainer.querySelector(`[data-sprint-id="${sprint.id}"]`);
+    if (sprintItem) {
+      const nameElement = sprintItem.querySelector('.gantt-list-item-name');
+      const metaElement = sprintItem.querySelector('.gantt-list-item-meta');
+
+      if (nameElement) {
+        nameElement.textContent = sprint.name;
+      }
+
+      if (metaElement) {
+        // Показываем реальные даты начала и окончания спринта
+        metaElement.textContent = `${formatDateISO(sprint.start)} - ${formatDateISO(sprint.end)}`;
+      }
+    }
   }
 
   /**
@@ -772,6 +800,7 @@ export class EditorModal {
     if (!formContainer) return;
 
     const isEdit = sprint !== null;
+    const timeScale = this.data.timeScale || 'day';
 
     // Для нового спринта определяем дату начала
     let defaultStartDate: Date;
@@ -786,10 +815,69 @@ export class EditorModal {
       defaultStartDate = this.data.startDate;
     }
 
-    // Для нового спринта вычисляем дату окончания через 2 недели от даты начала (13 дней, чтобы закончить в воскресенье)
-    const defaultEndDate = isEdit
-      ? sprint.end
-      : new Date(defaultStartDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+    const weekStartsOn = this.data.weekStartsOn || 1;
+
+    // В недельном режиме привязываем к началу недели
+    if (timeScale === 'week') {
+      defaultStartDate = getWeekStart(defaultStartDate, weekStartsOn);
+    }
+
+    // Для нового спринта вычисляем дату окончания
+    // ВАЖНО: В недельном режиме dropdown'ы хранят ПОНЕДЕЛЬНИКИ недель, а не воскресенья!
+    let defaultEndDate: Date;
+    if (isEdit) {
+      defaultEndDate = sprint.end;
+    } else {
+      if (timeScale === 'week') {
+        // 2 недели (13 дней, чтобы закончить в воскресенье)
+        defaultEndDate = new Date(defaultStartDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+      } else {
+        // 2 недели для режима дней
+        defaultEndDate = new Date(defaultStartDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    // Вычисляем понедельники для dropdown'ов (dropdown хранит именно понедельники)
+    let defaultStartMonday: Date;
+    let defaultEndMonday: Date;
+
+    if (timeScale === 'week') {
+      // Для режима недель dropdown содержит понедельники
+      defaultStartMonday = getWeekStart(defaultStartDate, weekStartsOn);
+
+      if (isEdit) {
+        // При редактировании: sprint.end это воскресенье, находим понедельник ЭТОЙ недели
+        defaultEndMonday = getWeekStart(defaultEndDate, weekStartsOn);
+      } else {
+        // При создании: defaultEndDate это промежуточная дата, привязываем к концу недели,
+        // затем находим понедельник последней недели
+        const endWeekSunday = getWeekEnd(defaultEndDate, weekStartsOn);
+        defaultEndMonday = getWeekStart(endWeekSunday, weekStartsOn);
+      }
+    } else {
+      // В режиме дней используем даты как есть (input type="date")
+      defaultStartMonday = defaultStartDate;
+      defaultEndMonday = defaultEndDate;
+    }
+
+    // Генерируем список недель для выбора (если режим недель)
+    let weekOptions = '';
+    if (timeScale === 'week') {
+      const weeks: Date[] = [];
+      const current = getWeekStart(this.data.startDate, weekStartsOn);
+      const end = getWeekEnd(this.data.endDate, weekStartsOn);
+
+      while (current <= end) {
+        weeks.push(new Date(current));
+        current.setDate(current.getDate() + 7);
+      }
+
+      weekOptions = weeks.map(week => {
+        const weekEnd = getWeekEnd(week, weekStartsOn);
+        const weekLabel = `${formatDateISO(week)} — ${formatDateISO(weekEnd)} (неделя)`;
+        return `<option value="${formatDateISO(week)}">${weekLabel}</option>`;
+      }).join('');
+    }
 
     formContainer.innerHTML = `
       <div class="gantt-form">
@@ -800,15 +888,33 @@ export class EditorModal {
           <input type="text" id="sprint-name" value="${isEdit ? this.escapeHtml(sprint.name) : ''}" placeholder="Спринт 1" />
         </div>
 
-        <div class="gantt-form-group">
-          <label>Дата начала *</label>
-          <input type="date" id="sprint-start" value="${formatDateISO(defaultStartDate)}" />
-        </div>
+        ${timeScale === 'week' ? `
+          <div class="gantt-form-group">
+            <label>Неделя начала *</label>
+            <select id="sprint-start">
+              ${weekOptions}
+            </select>
+            <small>Выберите понедельник недели начала спринта</small>
+          </div>
 
-        <div class="gantt-form-group">
-          <label>Дата окончания *</label>
-          <input type="date" id="sprint-end" value="${formatDateISO(defaultEndDate)}" />
-        </div>
+          <div class="gantt-form-group">
+            <label>Неделя окончания *</label>
+            <select id="sprint-end">
+              ${weekOptions}
+            </select>
+            <small>Выберите понедельник недели окончания спринта</small>
+          </div>
+        ` : `
+          <div class="gantt-form-group">
+            <label>Дата начала *</label>
+            <input type="date" id="sprint-start" value="${formatDateISO(defaultStartMonday)}" />
+          </div>
+
+          <div class="gantt-form-group">
+            <label>Дата окончания *</label>
+            <input type="date" id="sprint-end" value="${formatDateISO(defaultEndMonday)}" />
+          </div>
+        `}
 
         <div class="gantt-form-actions">
           ${isEdit ? `
@@ -825,6 +931,19 @@ export class EditorModal {
       </div>
     `;
 
+    // Устанавливаем выбранные значения для select'ов в недельном режиме
+    if (timeScale === 'week') {
+      const startSelect = formContainer.querySelector('#sprint-start') as HTMLSelectElement;
+      const endSelect = formContainer.querySelector('#sprint-end') as HTMLSelectElement;
+
+      if (startSelect) {
+        startSelect.value = formatDateISO(defaultStartMonday);
+      }
+      if (endSelect) {
+        endSelect.value = formatDateISO(defaultEndMonday);
+      }
+    }
+
     // Обработчики
     this.setupSprintFormHandlers(sprint);
   }
@@ -836,19 +955,33 @@ export class EditorModal {
     const form = this.modalElement?.querySelector('#gantt-editor-form');
     if (!form) return;
 
-    const startInput = form.querySelector('#sprint-start') as HTMLInputElement;
-    const endInput = form.querySelector('#sprint-end') as HTMLInputElement;
+    const startElement = form.querySelector('#sprint-start') as HTMLInputElement | HTMLSelectElement;
+    const endElement = form.querySelector('#sprint-end') as HTMLInputElement | HTMLSelectElement;
+    const timeScale = this.data.timeScale || 'day';
 
-    // Для создания нового спринта: автоматически пересчитываем дату окончания при изменении даты начала
-    if (!sprint) {
-      startInput?.addEventListener('change', () => {
-        const startDate = parseDateISO(startInput.value);
-        // Автоматически устанавливаем дату окончания через 2 недели (13 дней, чтобы закончить в воскресенье)
-        const newEndDate = new Date(startDate.getTime() + 13 * 24 * 60 * 60 * 1000);
-        if (endInput) {
-          endInput.value = formatDateISO(newEndDate);
+    // В недельном режиме используется select, автоматически пересчитываем конец для новых спринтов
+    if (timeScale === 'week') {
+      startElement?.addEventListener('change', () => {
+        // Автоматически обновляем конец спринта если создаем новый
+        if (!sprint && endElement) {
+          const startDate = parseDateISO(startElement.value);
+          const newEndDate = new Date(startDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+          const weekStart = getWeekStart(newEndDate, this.data.weekStartsOn || 1);
+          endElement.value = formatDateISO(weekStart);
         }
       });
+    } else {
+      // Для создания нового спринта в режиме дней: автоматически пересчитываем дату окончания
+      if (!sprint) {
+        startElement?.addEventListener('change', () => {
+          const startDate = parseDateISO(startElement.value);
+          // Автоматически устанавливаем дату окончания через 2 недели
+          const newEndDate = new Date(startDate.getTime() + 13 * 24 * 60 * 60 * 1000);
+          if (endElement) {
+            endElement.value = formatDateISO(newEndDate);
+          }
+        });
+      }
     }
 
     // Создание
@@ -866,18 +999,42 @@ export class EditorModal {
       nameInput?.addEventListener('input', () => {
         if (sprint) {
           sprint.name = nameInput.value.trim();
+          this.updateSprintListDisplay(sprint);
         }
       });
 
-      startInput?.addEventListener('change', () => {
+      startElement?.addEventListener('change', () => {
         if (sprint) {
-          sprint.start = parseDateISO(startInput.value);
+          const selectedDate = parseDateISO(startElement.value);
+
+          if (timeScale === 'week') {
+            const normalized = getWeekStart(selectedDate, this.data.weekStartsOn || 1);
+            sprint.start = normalized;
+            // Обновляем значение в dropdown, чтобы оно показывало понедельник
+            startElement.value = formatDateISO(normalized);
+          } else {
+            sprint.start = selectedDate;
+          }
+
+          this.updateSprintListDisplay(sprint);
         }
       });
 
-      endInput?.addEventListener('change', () => {
+      endElement?.addEventListener('change', () => {
         if (sprint) {
-          sprint.end = parseDateISO(endInput.value);
+          const selectedDate = parseDateISO(endElement.value);
+
+          if (timeScale === 'week') {
+            const normalized = getWeekEnd(selectedDate, this.data.weekStartsOn || 1);
+            sprint.end = normalized;
+            // Dropdown хранит понедельники, поэтому находим понедельник последней недели
+            const endMonday = getWeekStart(normalized, this.data.weekStartsOn || 1);
+            endElement.value = formatDateISO(endMonday);
+          } else {
+            sprint.end = selectedDate;
+          }
+
+          this.updateSprintListDisplay(sprint);
         }
       });
     }
@@ -906,6 +1063,17 @@ export class EditorModal {
       <div class="gantt-form">
         <h3>Настройки диаграммы</h3>
 
+        ${this.data.timeScale === 'week' ? `
+          <div class="gantt-form-group">
+            <label>Начало недели *</label>
+            <select id="settings-week-starts-on">
+              <option value="1" ${!this.data.weekStartsOn || this.data.weekStartsOn === 1 ? 'selected' : ''}>Понедельник</option>
+              <option value="0" ${this.data.weekStartsOn === 0 ? 'selected' : ''}>Воскресенье</option>
+            </select>
+            <small>День, с которого начинается неделя в вашей стране</small>
+          </div>
+        ` : ''}
+
         <div class="gantt-form-group">
           <label>Дата начала *</label>
           <input type="date" id="settings-start-date" value="${formatDateISO(this.data.startDate)}" />
@@ -916,43 +1084,47 @@ export class EditorModal {
           <input type="date" id="settings-end-date" value="${formatDateISO(this.data.endDate)}" />
         </div>
 
-        <div class="gantt-form-group">
-          <label>Исключить дни недели</label>
-          <div class="gantt-weekdays">
-            ${['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((day, index) => `
-              <label class="gantt-checkbox">
-                <input type="checkbox" value="${index}" ${this.data.excludeWeekdays.includes(index) ? 'checked' : ''} />
-                ${day}
-              </label>
-            `).join('')}
+        ${this.data.timeScale === 'day' ? `
+          <div class="gantt-form-group">
+            <label>Исключить дни недели</label>
+            <div class="gantt-weekdays">
+              ${['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((day, index) => `
+                <label class="gantt-checkbox">
+                  <input type="checkbox" value="${index}" ${this.data.excludeWeekdays.includes(index) ? 'checked' : ''} />
+                  ${day}
+                </label>
+              `).join('')}
+            </div>
           </div>
-        </div>
 
-        <div class="gantt-form-group">
-          <label>Включить конкретные даты (через запятую)</label>
-          <input type="text" id="settings-include-dates" value="${this.data.includeDates.join(', ')}" placeholder="2024-01-06, 2024-01-13" />
-          <small>Даты в формате YYYY-MM-DD</small>
-        </div>
+          <div class="gantt-form-group">
+            <label>Включить конкретные даты (через запятую)</label>
+            <input type="text" id="settings-include-dates" value="${this.data.includeDates.join(', ')}" placeholder="2024-01-06, 2024-01-13" />
+            <small>Даты в формате YYYY-MM-DD</small>
+          </div>
 
-        <div class="gantt-form-group">
-          <label>Исключить конкретные даты (через запятую)</label>
-          <input type="text" id="settings-exclude-dates" value="${this.data.excludeDates.join(', ')}" placeholder="2024-01-01, 2024-01-07" />
-          <small>Праздники и выходные в формате YYYY-MM-DD</small>
-        </div>
+          <div class="gantt-form-group">
+            <label>Исключить конкретные даты (через запятую)</label>
+            <input type="text" id="settings-exclude-dates" value="${this.data.excludeDates.join(', ')}" placeholder="2024-01-01, 2024-01-07" />
+            <small>Праздники и выходные в формате YYYY-MM-DD</small>
+          </div>
 
-        <div class="gantt-form-group">
-          <label class="gantt-checkbox">
-            <input type="checkbox" id="settings-show-today-line" ${this.data.showTodayLine !== false ? 'checked' : ''} />
-            Показывать линию текущего дня
-          </label>
-          <small>Вертикальная линия, показывающая сегодняшнюю дату</small>
-        </div>
+          <div class="gantt-form-group" id="today-line-settings">
+            <label class="gantt-checkbox">
+              <input type="checkbox" id="settings-show-today-line" ${this.data.showTodayLine !== false ? 'checked' : ''} />
+              Показывать линию текущего дня
+            </label>
+            <small>Вертикальная линия, показывающая сегодняшнюю дату</small>
+          </div>
+        ` : ''}
 
         <div class="gantt-settings-info">
           <small>Изменения будут применены при нажатии кнопки "Сохранить" внизу</small>
         </div>
       </div>
     `;
+
+    // Обработчики больше не нужны - timeScale теперь задается при создании диаграммы
   }
 
   // === ОБРАБОТЧИКИ ДЕЙСТВИЙ ===
@@ -1076,11 +1248,23 @@ export class EditorModal {
       return;
     }
 
+    const timeScale = this.data.timeScale || 'day';
+    let startDate = parseDateISO(startStr);
+    let endDate = parseDateISO(endStr);
+
+    // В недельном режиме привязываем к границам недель
+    if (timeScale === 'week') {
+      const weekStartsOn = this.data.weekStartsOn || 1;
+      startDate = getWeekStart(startDate, weekStartsOn);
+      endDate = getWeekEnd(endDate, weekStartsOn);
+    }
+
+    const sprintId = generateId();
     const newSprint: Sprint = {
-      id: generateId(),
+      id: sprintId,
       name,
-      start: parseDateISO(startStr),
-      end: parseDateISO(endStr),
+      start: startDate,
+      end: endDate,
     };
 
     this.data.sprints.push(newSprint);
@@ -1110,7 +1294,6 @@ export class EditorModal {
 
       // Logseq автоматически перерисует блок после обновления
       // Не нужно перезагружать страницу - это убивает слушатели событий
-      console.log(`[${PLUGIN_NAME}] Data saved, modal closed. Logseq will re-render the block automatically.`);
     } catch (error) {
       console.error(`[${PLUGIN_NAME}] Failed to save:`, error);
       logseq.UI.showMsg('❌ Ошибка сохранения', 'error');
@@ -1123,9 +1306,6 @@ export class EditorModal {
   private applySettingsChanges(): void {
     const startStr = (this.modalElement?.querySelector('#settings-start-date') as HTMLInputElement)?.value;
     const endStr = (this.modalElement?.querySelector('#settings-end-date') as HTMLInputElement)?.value;
-    const includeStr = (this.modalElement?.querySelector('#settings-include-dates') as HTMLInputElement)?.value;
-    const excludeStr = (this.modalElement?.querySelector('#settings-exclude-dates') as HTMLInputElement)?.value;
-    const showTodayLineCheckbox = this.modalElement?.querySelector('#settings-show-today-line') as HTMLInputElement;
 
     if (!startStr || !endStr) {
       return; // Валидация будет в handleSave
@@ -1135,18 +1315,33 @@ export class EditorModal {
     this.data.startDate = parseDateISO(startStr);
     this.data.endDate = parseDateISO(endStr);
 
-    // Обновляем исключенные дни недели
-    const checkboxes = this.modalElement?.querySelectorAll('.gantt-weekdays input[type="checkbox"]') || [];
-    this.data.excludeWeekdays = Array.from(checkboxes)
-      .filter((cb: any) => cb.checked)
-      .map((cb: any) => parseInt(cb.value));
+    // ВАЖНО: timeScale теперь задается при создании диаграммы и не может быть изменен
+    // Настройки зависят от текущего timeScale
+    const timeScale = this.data.timeScale || 'day';
 
-    // Обновляем списки дат
-    this.data.includeDates = includeStr.split(',').map(d => d.trim()).filter(d => d);
-    this.data.excludeDates = excludeStr.split(',').map(d => d.trim()).filter(d => d);
+    if (timeScale === 'week') {
+      // В режиме недель обновляем только weekStartsOn
+      const weekStartsOnSelect = this.modalElement?.querySelector('#settings-week-starts-on') as HTMLSelectElement;
+      if (weekStartsOnSelect) {
+        this.data.weekStartsOn = parseInt(weekStartsOnSelect.value) as 0 | 1;
+      }
+    } else {
+      // В режиме дней обновляем настройки рабочих дней
+      const checkboxes = this.modalElement?.querySelectorAll('.gantt-weekdays input[type="checkbox"]') || [];
+      this.data.excludeWeekdays = Array.from(checkboxes)
+        .filter((cb: any) => cb.checked)
+        .map((cb: any) => parseInt(cb.value));
 
-    // Обновляем настройку линии текущего дня
-    this.data.showTodayLine = showTodayLineCheckbox?.checked ?? true;
+      // Обновляем списки дат
+      const includeStr = (this.modalElement?.querySelector('#settings-include-dates') as HTMLInputElement)?.value;
+      const excludeStr = (this.modalElement?.querySelector('#settings-exclude-dates') as HTMLInputElement)?.value;
+      this.data.includeDates = includeStr ? includeStr.split(',').map(d => d.trim()).filter(d => d) : [];
+      this.data.excludeDates = excludeStr ? excludeStr.split(',').map(d => d.trim()).filter(d => d) : [];
+
+      // Обновляем настройку линии текущего дня
+      const showTodayLineCheckbox = this.modalElement?.querySelector('#settings-show-today-line') as HTMLInputElement;
+      this.data.showTodayLine = showTodayLineCheckbox?.checked ?? true;
+    }
   }
 
   /**

@@ -34,7 +34,7 @@
   position: sticky;
   top: 0;
   background: var(--ls-primary-background-color);
-  z-index: 10;
+  z-index: 3;
 }
 
 .gantt-project-header {
@@ -150,6 +150,16 @@
   background: var(--ls-link-text-color);
   color: white;
   font-weight: 700;
+}
+
+/* Week headers - wider cells for week mode */
+.gantt-week-header .gantt-day-number {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gantt-week-header .gantt-day-name {
+  font-size: 9px;
 }
 
 /* Projects */

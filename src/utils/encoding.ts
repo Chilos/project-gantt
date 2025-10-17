@@ -20,6 +20,8 @@ export function createDefaultGanttData(): GanttData {
     includeDates: [],
     excludeDates: [],
     showTodayLine: true,
+    timeScale: 'day',
+    weekStartsOn: 1, // Понедельник по умолчанию
   };
 }
 
@@ -64,6 +66,8 @@ export function toSerializable(data: GanttData): SerializableGanttData {
     ...(data.includeDates.length > 0 && { includeDates: data.includeDates }),
     ...(data.excludeDates.length > 0 && { excludeDates: data.excludeDates }),
     ...(data.showTodayLine !== undefined && { showTodayLine: data.showTodayLine }),
+    timeScale: data.timeScale, // Всегда сериализуем timeScale - это важная характеристика диаграммы
+    ...(data.weekStartsOn !== undefined && data.weekStartsOn !== 1 && { weekStartsOn: data.weekStartsOn }),
   };
 }
 
@@ -98,6 +102,8 @@ export function fromSerializable(data: SerializableGanttData): GanttData {
     includeDates: data.includeDates || [],
     excludeDates: data.excludeDates || [],
     showTodayLine: data.showTodayLine !== undefined ? data.showTodayLine : true,
+    timeScale: data.timeScale, // Обязательное поле, должно быть задано при создании
+    weekStartsOn: data.weekStartsOn !== undefined ? data.weekStartsOn : 1, // Понедельник по умолчанию
   };
 }
 

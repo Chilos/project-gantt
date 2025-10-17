@@ -36,15 +36,8 @@ export class ProjectGanttPlugin {
    * Инициализирует плагин
    */
   async initialize(): Promise<void> {
-    console.log(`[${PLUGIN_NAME}] Initializing...`);
-
     // Инициализируем цветовую систему
     this.colors = this.colorSystem.generateStageColors();
-    console.log(`[${PLUGIN_NAME}] Color system initialized:`, {
-      mode: this.colorSystem.getThemeMode(),
-      accent: this.colorSystem.getAccentColor(),
-      colors: this.colors
-    });
 
     // Регистрируем стили
     this.registerStyles();
@@ -60,8 +53,6 @@ export class ProjectGanttPlugin {
 
     // Слушаем изменения темы
     this.setupThemeListener();
-
-    console.log(`[${PLUGIN_NAME}] Plugin loaded successfully!`);
   }
 
   /**
@@ -70,7 +61,6 @@ export class ProjectGanttPlugin {
   private registerStyles(): void {
     logseq.provideStyle(ganttCSS);
     logseq.provideStyle(editorModalCSS);
-    console.log(`[${PLUGIN_NAME}] Styles registered`);
   }
 
   /**
@@ -79,8 +69,6 @@ export class ProjectGanttPlugin {
   private registerEventHandlers(): void {
     logseq.provideModel({
       openGanttEditor: (e: EditorButtonClickEvent) => {
-        console.log(`[${PLUGIN_NAME}] Editor button clicked`, e);
-
         const slotId = (e as any).slot || e.dataset?.slotId || e.slotId || e['data-slot-id'];
 
         if (!slotId) {
@@ -102,8 +90,6 @@ export class ProjectGanttPlugin {
       },
 
       navigateToPage: async (e: any) => {
-        console.log(`[${PLUGIN_NAME}] Navigate to page clicked`, e);
-
         // Предотвращаем стандартное действие ссылки
         if (e.preventDefault) {
           e.preventDefault();
@@ -116,8 +102,6 @@ export class ProjectGanttPlugin {
           return;
         }
 
-        console.log(`[${PLUGIN_NAME}] Navigating to page:`, pageName);
-
         try {
           // Получаем страницу по имени
           const page = await logseq.Editor.getPage(pageName);
@@ -127,7 +111,6 @@ export class ProjectGanttPlugin {
             await logseq.Editor.scrollToBlockInPage(pageName, page.uuid);
           } else {
             // Если страницы не существует, создаем её
-            console.log(`[${PLUGIN_NAME}] Page not found, creating:`, pageName);
             const newPage = await logseq.Editor.createPage(pageName);
             if (newPage) {
               await logseq.Editor.scrollToBlockInPage(pageName, newPage.uuid);
@@ -141,16 +124,24 @@ export class ProjectGanttPlugin {
   }
 
   /**
-   * Регистрирует slash команду
+   * Регистрирует slash команды
    */
   private registerSlashCommand(): void {
-    logseq.Editor.registerSlashCommand('Project Gantt', async () => {
-      console.log(`[${PLUGIN_NAME}] Slash command triggered`);
+    // Команда для режима дней
+    logseq.Editor.registerSlashCommand('Project Gantt: days', async () => {
       const defaultData = createDefaultGanttData();
+      defaultData.timeScale = 'day'; // Явно устанавливаем режим дней
       const encoded = encodeGanttData(defaultData);
       await logseq.Editor.insertAtEditingCursor(`{{renderer ${RENDERER_TYPE}, ${encoded}}}`);
     });
-    console.log(`[${PLUGIN_NAME}] Slash command registered as "Project Gantt"`);
+
+    // Команда для режима недель
+    logseq.Editor.registerSlashCommand('Project Gantt: weeks', async () => {
+      const defaultData = createDefaultGanttData();
+      defaultData.timeScale = 'week'; // Явно устанавливаем режим недель
+      const encoded = encodeGanttData(defaultData);
+      await logseq.Editor.insertAtEditingCursor(`{{renderer ${RENDERER_TYPE}, ${encoded}}}`);
+    });
   }
 
   /**
@@ -161,7 +152,6 @@ export class ProjectGanttPlugin {
       const [type, encodedData] = payload.arguments;
       if (type !== RENDERER_TYPE) return;
 
-      console.log(`[${PLUGIN_NAME}] Rendering Gantt for slot:`, slot);
       const data = decodeGanttData(encodedData || '');
 
       // Сохраняем соответствие slot -> uuid и текущие данные
@@ -222,8 +212,6 @@ export class ProjectGanttPlugin {
       // ColumnResizer автоматически восстанавливает ширину в конструкторе
       const resizer = new ColumnResizer(container);
       this.activeResizers.set(slotId, resizer);
-
-      console.log(`[${PLUGIN_NAME}] Drag-and-drop and column resizing enabled for slot:`, slotId);
     } catch (err) {
       console.error(`[${PLUGIN_NAME}] Failed to setup drag-and-drop:`, err);
     }
@@ -233,8 +221,6 @@ export class ProjectGanttPlugin {
    * Открывает редактор для указанного блока
    */
   private openEditor(blockUuid: string, initialData: GanttData): void {
-    console.log(`[${PLUGIN_NAME}] Opening editor for block:`, blockUuid);
-
     // Создаем и показываем модальный редактор
     const modal = new EditorModal(initialData, blockUuid);
     modal.show();
@@ -245,10 +231,8 @@ export class ProjectGanttPlugin {
    */
   private setupThemeListener(): void {
     logseq.App.onThemeModeChanged(({ mode }: { mode: 'light' | 'dark' }) => {
-      console.log(`[${PLUGIN_NAME}] Theme changed to:`, mode);
       this.colorSystem.refresh();
       this.colors = this.colorSystem.generateStageColors();
-      console.log(`[${PLUGIN_NAME}] Colors updated:`, this.colors);
     });
   }
 
@@ -256,8 +240,6 @@ export class ProjectGanttPlugin {
    * Очистка ресурсов при выгрузке
    */
   async cleanup(): Promise<void> {
-    console.log(`[${PLUGIN_NAME}] Cleaning up...`);
-
     // Очищаем редакторы
     for (const editor of this.activeEditors.values()) {
       editor.cleanup();

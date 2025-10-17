@@ -5,7 +5,7 @@
 
 import type { GanttData, GanttRenderOptions, Project, Stage, Milestone, Sprint } from '../types';
 import { DEFAULT_CELL_WIDTH, CSS_CLASSES } from '../utils/constants';
-import { generateWorkingDaysScale, getDayNameRu, isSameDay, getToday, getWorkingDaysBetween } from '../utils/dateUtils';
+import { generateWorkingDaysScale, generateWeeksScale, getDayNameRu, formatWeekRange, isSameDay, getToday, getWorkingDaysBetween, getWeekStart, snapToWeekBoundary } from '../utils/dateUtils';
 import { ColorSystem } from '../utils/colorSystem';
 
 export class GanttRenderer {
@@ -19,7 +19,10 @@ export class GanttRenderer {
    * Рендерит полную Gantt диаграмму
    */
   render(data: GanttData, options: GanttRenderOptions = {}): string {
-    const cellWidth = options.cellWidth || DEFAULT_CELL_WIDTH;
+    const timeScale = data.timeScale || 'day';
+    const baseCellWidth = options.cellWidth || DEFAULT_CELL_WIDTH;
+    // Для недель делаем ширину в 2 раза больше
+    const cellWidth = timeScale === 'week' ? baseCellWidth * 2 : baseCellWidth;
     const readonly = options.readonly ?? true;
     const showEditButton = options.showEditButton ?? true;
 
@@ -29,8 +32,13 @@ export class GanttRenderer {
       excludeDates: data.excludeDates,
     };
 
-    const workingDays = generateWorkingDaysScale(data.startDate, data.endDate, workingDaysConfig);
-    const timelineWidth = workingDays.length * cellWidth;
+    // Генерируем шкалу в зависимости от режима
+    const weekStartsOn = data.weekStartsOn || 1;
+    const timeScale_units = timeScale === 'week'
+      ? generateWeeksScale(data.startDate, data.endDate, weekStartsOn)
+      : generateWorkingDaysScale(data.startDate, data.endDate, workingDaysConfig);
+
+    const timelineWidth = timeScale_units.length * cellWidth;
 
     // Получаем сохранённую ширину колонки или используем 200px по умолчанию
     const savedColumnWidth = typeof localStorage !== 'undefined'
@@ -39,30 +47,55 @@ export class GanttRenderer {
     const columnWidth = Math.max(120, Math.min(400, savedColumnWidth));
     const totalWidth = columnWidth + timelineWidth;
 
-    const sprintSeparators = this.renderSprintSeparators(data.sprints, workingDays, cellWidth, columnWidth, workingDaysConfig);
-    const todayLine = (data.showTodayLine !== false) ? this.renderTodayLine(workingDays, cellWidth, columnWidth, workingDaysConfig) : '';
+    const sprintSeparators = this.renderSprintSeparators(data.sprints, timeScale_units, cellWidth, columnWidth, workingDaysConfig, timeScale, weekStartsOn);
+    const todayLine = (data.showTodayLine !== false && timeScale === 'day')
+      ? this.renderTodayLine(timeScale_units as Date[], cellWidth, columnWidth, workingDaysConfig)
+      : '';
 
-    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(workingDays, data.sprints, cellWidth, columnWidth, workingDaysConfig)}${this.renderProjects(data, workingDays, cellWidth, columnWidth, workingDaysConfig)}${sprintSeparators}${todayLine}</div></div>`;
+    return `<div class="${CSS_CLASSES.CONTAINER}" data-slot-id="${options.slotKey || ''}" data-readonly="${readonly}" data-time-scale="${timeScale}">${showEditButton ? this.renderEditButton(options.slotKey || '') : ''}<div class="${CSS_CLASSES.TABLE}" style="width: ${totalWidth}px;">${this.renderHeader(timeScale_units, data.sprints, cellWidth, columnWidth, workingDaysConfig, timeScale, weekStartsOn)}${this.renderProjects(data, timeScale_units, cellWidth, columnWidth, workingDaysConfig, timeScale, weekStartsOn)}${sprintSeparators}${todayLine}</div></div>`;
   }
 
   /**
    * Рендерит заголовок с временной шкалой
    */
-  private renderHeader(workingDays: Date[], sprints: Sprint[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
-    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}" style="width: ${columnWidth}px;">Проекты<div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, workingDays, cellWidth, workingDaysConfig)}${this.renderDayRow(workingDays, cellWidth)}</div></div>`;
+  private renderHeader(timeUnits: Date[], sprints: Sprint[], cellWidth: number, columnWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
+    const timeRow = timeScale === 'week'
+      ? this.renderWeekRow(timeUnits, cellWidth, weekStartsOn)
+      : this.renderDayRow(timeUnits, cellWidth);
+
+    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}" style="width: ${columnWidth}px;">Проекты<div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, timeUnits, cellWidth, workingDaysConfig, timeScale, weekStartsOn)}${timeRow}</div></div>`;
   }
 
   /**
    * Рендерит строку спринтов
    */
-  private renderSprintRow(sprints: Sprint[], _workingDays: Date[], cellWidth: number, workingDaysConfig: any): string {
+  private renderSprintRow(sprints: Sprint[], timeUnits: Date[], cellWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     if (!sprints || sprints.length === 0) {
       return '';
     }
 
     const sprintHtml = sprints.map((sprint, index) => {
-      const sprintWorkingDays = getWorkingDaysBetween(sprint.start, sprint.end, workingDaysConfig);
-      const width = sprintWorkingDays * cellWidth;
+      let width: number;
+      if (timeScale === 'week') {
+        // Для недель привязываем спринт к границам недель
+        // Используем неделю, в которой больше дней спринта
+        const sprintStartWeek = snapToWeekBoundary(sprint.start, sprint.start, sprint.end, weekStartsOn);
+        const sprintEndWeek = snapToWeekBoundary(sprint.end, sprint.start, sprint.end, weekStartsOn);
+
+        const startIndex = timeUnits.findIndex(week =>
+          getWeekStart(week, weekStartsOn).getTime() === sprintStartWeek.getTime()
+        );
+        const endIndex = timeUnits.findIndex(week =>
+          getWeekStart(week, weekStartsOn).getTime() === sprintEndWeek.getTime()
+        );
+
+        // Ширина = количество недель включительно
+        const weeksCount = endIndex >= startIndex ? endIndex - startIndex + 1 : 1;
+        width = weeksCount * cellWidth;
+      } else {
+        const sprintWorkingDays = getWorkingDaysBetween(sprint.start, sprint.end, workingDaysConfig);
+        width = sprintWorkingDays * cellWidth;
+      }
       const isLast = index === sprints.length - 1;
 
       return `<div class="gantt-sprint-header ${!isLast ? 'gantt-sprint-separator' : ''}" style="width: ${width}px;" data-sprint-id="${sprint.id}"> ${this.escapeHtml(sprint.name)} </div>`;
@@ -74,7 +107,7 @@ export class GanttRenderer {
   /**
    * Рендерит вертикальные линии-разделители спринтов
    */
-  private renderSprintSeparators(sprints: Sprint[], _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderSprintSeparators(sprints: Sprint[], timeUnits: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     if (!sprints || sprints.length === 0) {
       return '';
     }
@@ -83,8 +116,25 @@ export class GanttRenderer {
     const separators: string[] = [];
 
     sprints.forEach((sprint, index) => {
-      const sprintWorkingDays = getWorkingDaysBetween(sprint.start, sprint.end, workingDaysConfig);
-      const width = sprintWorkingDays * cellWidth;
+      let width: number;
+      if (timeScale === 'week') {
+        // Используем ту же логику что и в renderSprintRow
+        const sprintStartWeek = snapToWeekBoundary(sprint.start, sprint.start, sprint.end, weekStartsOn);
+        const sprintEndWeek = snapToWeekBoundary(sprint.end, sprint.start, sprint.end, weekStartsOn);
+
+        const startIndex = timeUnits.findIndex(week =>
+          getWeekStart(week, weekStartsOn).getTime() === sprintStartWeek.getTime()
+        );
+        const endIndex = timeUnits.findIndex(week =>
+          getWeekStart(week, weekStartsOn).getTime() === sprintEndWeek.getTime()
+        );
+
+        const weeksCount = endIndex >= startIndex ? endIndex - startIndex + 1 : 1;
+        width = weeksCount * cellWidth;
+      } else {
+        const sprintWorkingDays = getWorkingDaysBetween(sprint.start, sprint.end, workingDaysConfig);
+        width = sprintWorkingDays * cellWidth;
+      }
       currentPosition += width;
 
       // Добавляем разделитель после каждого спринта, кроме последнего
@@ -135,18 +185,31 @@ export class GanttRenderer {
   }
 
   /**
+   * Рендерит строку недель
+   */
+  private renderWeekRow(weeks: Date[], cellWidth: number, weekStartsOn: 0 | 1 = 1): string {
+    const weekHtml = weeks.map(weekStart => {
+      const weekRange = formatWeekRange(weekStart, weekStartsOn);
+
+      return `<div class="gantt-day-header gantt-week-header" style="width: ${cellWidth}px;" data-date="${weekStart.toISOString().split('T')[0]}"><div class="gantt-day-number">${weekRange}</div><div class="gantt-day-name">неделя</div></div>`;
+    }).join('');
+
+    return `<div class="${CSS_CLASSES.DAY_ROW}">${weekHtml}</div>`;
+  }
+
+  /**
    * Рендерит все проекты
    */
-  private renderProjects(data: GanttData, workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderProjects(data: GanttData, timeUnits: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     if (!data.projects || data.projects.length === 0) {
       return `<div class="${CSS_CLASSES.PROJECTS}"></div>`;
     }
 
     const projectsHtml = data.projects.map(project => {
       if (project.layout === 'multiline') {
-        return this.renderProjectMultiline(project, data.startDate, workingDays, cellWidth, columnWidth, workingDaysConfig);
+        return this.renderProjectMultiline(project, data.startDate, timeUnits, cellWidth, columnWidth, workingDaysConfig, timeScale, weekStartsOn);
       } else {
-        return this.renderProjectInline(project, data.startDate, workingDays, cellWidth, columnWidth, workingDaysConfig);
+        return this.renderProjectInline(project, data.startDate, timeUnits, cellWidth, columnWidth, workingDaysConfig, timeScale, weekStartsOn);
       }
     }).join('');
 
@@ -156,7 +219,7 @@ export class GanttRenderer {
   /**
    * Рендерит проект в inline режиме (все этапы на одной строке)
    */
-  private renderProjectInline(project: Project, startDate: Date, _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderProjectInline(project: Project, startDate: Date, _timeUnits: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     // Если проект без этапов и мелстоунов - НЕ рендерим вообще
     const hasStages = project.stages.length > 0;
     const hasMilestones = project.milestones.length > 0;
@@ -166,11 +229,11 @@ export class GanttRenderer {
     }
 
     const stagesHtml = project.stages.map(stage =>
-      this.renderStage(stage, startDate, cellWidth, workingDaysConfig)
+      this.renderStage(stage, startDate, cellWidth, workingDaysConfig, timeScale, weekStartsOn)
     ).join('');
 
     const milestonesHtml = project.milestones.map(milestone =>
-      this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig)
+      this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig, timeScale, weekStartsOn)
     ).join('');
 
     const projectNameHtml = this.parseLogseqLinks(project.name);
@@ -181,9 +244,9 @@ export class GanttRenderer {
   /**
    * Рендерит проект в multiline режиме (каждый этап на отдельной строке)
    */
-  private renderProjectMultiline(project: Project, startDate: Date, _workingDays: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any): string {
+  private renderProjectMultiline(project: Project, startDate: Date, _timeUnits: Date[], cellWidth: number, columnWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     const milestonesHtml = project.milestones.map(milestone =>
-      this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig)
+      this.renderMilestone(milestone, startDate, cellWidth, workingDaysConfig, timeScale, weekStartsOn)
     ).join('');
 
     const projectNameHtml = this.parseLogseqLinks(project.name);
@@ -191,7 +254,7 @@ export class GanttRenderer {
     const mainRow = `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-project-main" data-project-id="${project.id}"><div class="${CSS_CLASSES.PROJECT_NAME}" style="width: ${columnWidth}px;"><div>${projectNameHtml}</div>${project.assignee ? `<span class="gantt-assignee">${this.escapeHtml(project.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${milestonesHtml}</div></div>`;
 
     const stageRows = project.stages.map(stage => {
-      const stageHtml = this.renderStage(stage, startDate, cellWidth, workingDaysConfig);
+      const stageHtml = this.renderStage(stage, startDate, cellWidth, workingDaysConfig, timeScale, weekStartsOn);
       const stageNameHtml = this.parseLogseqLinks(stage.name);
 
       return `<div class="${CSS_CLASSES.PROJECT_ROW} gantt-stage-row" data-project-id="${project.id}" data-stage-id="${stage.id}"><div class="${CSS_CLASSES.PROJECT_NAME}" style="width: ${columnWidth}px;"><div> - ${stageNameHtml}</div>${stage.assignee ? `<span class="gantt-assignee">${this.escapeHtml(stage.assignee.name)}</span>` : ''}</div><div class="${CSS_CLASSES.PROJECT_TIMELINE}">${stageHtml}</div></div>`;
@@ -203,21 +266,26 @@ export class GanttRenderer {
   /**
    * Рендерит этап
    */
-  private renderStage(stage: Stage, startDate: Date, cellWidth: number, workingDaysConfig: any): string {
-    const position = this.getDatePosition(startDate, stage.start, cellWidth, workingDaysConfig);
+  private renderStage(stage: Stage, startDate: Date, cellWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
+    const position = this.getDatePosition(startDate, stage.start, cellWidth, workingDaysConfig, timeScale, weekStartsOn);
     const width = stage.duration * cellWidth;
     const textColor = this.colorSystem.getContrastTextColor(stage.color);
 
-    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color}; color: ${textColor};"><div class="gantt-stage-days">${stage.duration}</div><div class="gantt-stage-content"><div class="gantt-stage-name">${this.escapeHtml(stage.name)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(stage.assignee.name)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
+    // В режиме недель stage.duration уже содержит количество недель,
+    // в режиме дней - количество дней
+    const durationLabel = stage.duration;
+
+    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color}; color: ${textColor};"><div class="gantt-stage-days">${durationLabel}</div><div class="gantt-stage-content"><div class="gantt-stage-name">${this.escapeHtml(stage.name)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(stage.assignee.name)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
   }
 
   /**
    * Рендерит мелстоун
    */
-  private renderMilestone(milestone: Milestone, startDate: Date, cellWidth: number, workingDaysConfig: any): string {
-    const position = this.getDatePosition(startDate, milestone.date, cellWidth, workingDaysConfig);
-    // Добавляем половину ширины ячейки, чтобы вершина ромба указывала на середину
-    const centerPosition = position +  + 10;
+  private renderMilestone(milestone: Milestone, startDate: Date, cellWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
+    const position = this.getDatePosition(startDate, milestone.date, cellWidth, workingDaysConfig, timeScale, weekStartsOn);
+    // Фиксированное смещение: в режиме дней 20px, в режиме недель 40px
+    const offset = timeScale === 'week' ? 27 : 10;
+    const centerPosition = position + offset;
     const color = milestone.color || '#FFD93D';
     const title = milestone.assignee
       ? `${milestone.name} (${milestone.assignee.name})`
@@ -236,7 +304,14 @@ export class GanttRenderer {
   /**
    * Вычисляет позицию даты на временной шкале
    */
-  private getDatePosition(startDate: Date, targetDate: Date, cellWidth: number, workingDaysConfig: any): number {
+  private getDatePosition(startDate: Date, targetDate: Date, cellWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): number {
+    if (timeScale === 'week') {
+      const startWeek = getWeekStart(startDate, weekStartsOn);
+      const targetWeek = getWeekStart(targetDate, weekStartsOn);
+      const weeksDiff = Math.floor((targetWeek.getTime() - startWeek.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      return Math.max(0, weeksDiff) * cellWidth;
+    }
+
     const workingDays = getWorkingDaysBetween(startDate, targetDate, workingDaysConfig);
     return Math.max(0, workingDays - 1) * cellWidth;
   }

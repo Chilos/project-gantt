@@ -5,7 +5,8 @@
 
 import type { GanttData, IGanttRepository } from '../types';
 import { encodeGanttData, decodeGanttData, createDefaultGanttData, validateGanttData, sanitizeGanttData } from '../utils/encoding';
-import { RENDERER_TYPE } from '../utils/constants';
+import { RENDERER_TYPE, PLUGIN_NAME } from '../utils/constants';
+import { formatDateISO } from '../utils/dateUtils';
 
 export class GanttDataManager implements IGanttRepository {
   /**
@@ -17,6 +18,7 @@ export class GanttDataManager implements IGanttRepository {
 
     const block = await logseq.Editor.getBlock(uuid);
     if (!block) {
+      console.error(`[${PLUGIN_NAME}] GanttDataManager.save() - Блок не найден`, { uuid });
       throw new Error('Block not found');
     }
 
