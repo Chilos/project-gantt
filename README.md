@@ -1,6 +1,6 @@
 # Project Gantt для Logseq
 
-![Version](https://img.shields.io/badge/version-0.1.7-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 Интерактивная диаграмма Ганта для управления проектами в Logseq с полноценным drag-and-drop редактированием.

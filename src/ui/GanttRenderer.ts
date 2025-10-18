@@ -63,7 +63,7 @@ export class GanttRenderer {
       ? this.renderWeekRow(timeUnits, cellWidth, weekStartsOn)
       : this.renderDayRow(timeUnits, cellWidth);
 
-    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}" style="width: ${columnWidth}px;">Проекты<div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, timeUnits, cellWidth, workingDaysConfig, timeScale, weekStartsOn)}${timeRow}</div></div>`;
+    return `<div class="${CSS_CLASSES.HEADER}"><div class="${CSS_CLASSES.PROJECT_HEADER}" style="width: ${columnWidth}px;"><div class="gantt-column-resizer"></div></div><div class="${CSS_CLASSES.TIME_HEADER}">${this.renderSprintRow(sprints, timeUnits, cellWidth, workingDaysConfig, timeScale, weekStartsOn)}${timeRow}</div></div>`;
   }
 
   /**

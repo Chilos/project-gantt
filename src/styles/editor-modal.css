@@ -196,6 +196,9 @@
   border: 1px solid var(--ls-border-color);
   cursor: pointer;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .gantt-list-item:hover {
@@ -325,6 +328,46 @@
 .gantt-stage-item:hover,
 .gantt-milestone-item:hover {
   border-color: var(--ls-link-text-color);
+}
+
+/* Drag Handle */
+.gantt-drag-handle {
+  width: 20px;
+  height: 20px;
+  cursor: grab;
+  color: var(--ls-secondary-text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.gantt-stage-item:hover .gantt-drag-handle,
+.gantt-milestone-item:hover .gantt-drag-handle,
+.gantt-list-item:hover .gantt-drag-handle {
+  opacity: 1;
+}
+
+.gantt-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging States */
+.gantt-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.gantt-drag-over {
+  border-top: 2px solid var(--ls-link-text-color);
+}
+
+.gantt-list-item-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .gantt-stage-color {

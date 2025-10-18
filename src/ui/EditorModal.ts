@@ -8,6 +8,7 @@ import { GanttDataManager } from '../storage/GanttDataManager';
 import { generateId } from '../utils/encoding';
 import { formatDateISO, parseDateISO, getWeekStart, getWeekEnd } from '../utils/dateUtils';
 import { DEFAULT_STAGE_COLORS, DEFAULT_MILESTONE_COLORS, PLUGIN_NAME } from '../utils/constants';
+import { DragAndDropManager } from './DragAndDropManager';
 
 export class EditorModal {
   private data: GanttData;
@@ -16,11 +17,13 @@ export class EditorModal {
   private modalElement: HTMLElement | null = null;
   private selectedProject: Project | null = null;
   private doc: Document;
+  private dragDropManager: DragAndDropManager;
 
   constructor(data: GanttData, blockUuid: string) {
     this.data = data;
     this.blockUuid = blockUuid;
     this.storage = new GanttDataManager();
+    this.dragDropManager = new DragAndDropManager();
     // Получаем правильный document (parent для iframe или обычный document)
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
   }
@@ -167,6 +170,10 @@ export class EditorModal {
     const projectItems = listContainer.querySelectorAll('.gantt-list-item');
     projectItems.forEach(item => {
       item.addEventListener('click', (e) => {
+        // Игнорируем клик на drag handle
+        if ((e.target as HTMLElement).classList.contains('gantt-drag-handle')) {
+          return;
+        }
         const projectId = (e.currentTarget as HTMLElement).dataset.projectId;
         const project = this.data.projects.find(p => p.id === projectId);
         if (project) {
@@ -174,6 +181,19 @@ export class EditorModal {
         }
       });
     });
+
+    // Настраиваем drag-and-drop для проектов
+    const listItemsContainer = listContainer.querySelector('.gantt-list-items');
+    if (listItemsContainer && this.data.projects.length > 0) {
+      this.dragDropManager.setupProjectsDragAndDrop(
+        listItemsContainer as HTMLElement,
+        this.data.projects,
+        (reorderedProjects) => {
+          this.data.projects = reorderedProjects;
+          this.renderProjectsTab();
+        }
+      );
+    }
 
     // Показываем форму первого проекта или форму добавления
     if (this.data.projects.length > 0) {
@@ -190,9 +210,12 @@ export class EditorModal {
     const isSelected = this.selectedProject?.id === project.id;
     return `
       <div class="gantt-list-item ${isSelected ? 'selected' : ''}" data-project-id="${project.id}">
-        <div class="gantt-list-item-name">${this.escapeHtml(project.name)}</div>
-        <div class="gantt-list-item-meta">
-          ${project.stages.length} этапов, ${project.milestones.length} мелстоунов
+        <span class="gantt-drag-handle">☰</span>
+        <div class="gantt-list-item-content">
+          <div class="gantt-list-item-name">${this.escapeHtml(project.name)}</div>
+          <div class="gantt-list-item-meta">
+            ${project.stages.length} этапов, ${project.milestones.length} мелстоунов
+          </div>
         </div>
       </div>
     `;
@@ -277,7 +300,7 @@ export class EditorModal {
           <div class="gantt-form-section">
             <h4>Этапы проекта</h4>
             <div class="gantt-stages-list">
-              ${project.stages.map(stage => this.renderStageListItem(stage)).join('')}
+              ${project.stages.map(stage => this.renderStageListItem(stage, project.layout === 'multiline')).join('')}
             </div>
             <button class="gantt-btn gantt-btn-secondary" data-action="add-stage">+ Добавить этап</button>
           </div>
@@ -374,6 +397,20 @@ export class EditorModal {
         });
       });
 
+      // Настраиваем drag-and-drop для этапов (только если проект multiline)
+      const stagesList = form.querySelector('.gantt-stages-list');
+      if (stagesList && project.layout === 'multiline' && project.stages.length > 0) {
+        this.dragDropManager.setupStagesDragAndDrop(
+          stagesList as HTMLElement,
+          project.stages,
+          (reorderedStages) => {
+            project.stages = reorderedStages;
+            this.updateProjectListDisplay(project);
+            this.selectProject(project);
+          }
+        );
+      }
+
       // Клики по мелстоунам
       const milestoneItems = form.querySelectorAll('.gantt-milestone-item');
       milestoneItems.forEach(item => {
@@ -392,12 +429,13 @@ export class EditorModal {
   /**
    * Рендерит элемент этапа в списке
    */
-  private renderStageListItem(stage: Stage): string {
+  private renderStageListItem(stage: Stage, showDragHandle: boolean = true): string {
     const timeScale = this.data.timeScale || 'day';
     const durationLabel = timeScale === 'week' ? 'недель' : 'дней';
 
     return `
       <div class="gantt-stage-item" data-stage-id="${stage.id}">
+        ${showDragHandle ? '<span class="gantt-drag-handle">☰</span>' : ''}
         <div class="gantt-stage-color" style="background-color: ${stage.color}"></div>
         <div class="gantt-stage-info">
           <div class="gantt-stage-name">${this.escapeHtml(stage.name)}</div>

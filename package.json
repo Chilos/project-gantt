@@ -1,6 +1,6 @@
 {
   "name": "logseq-plugin-project-gantt",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Интерактивная диаграмма Ганта для управления проектами в Logseq",
   "main": "dist/index.js",
   "scripts": {

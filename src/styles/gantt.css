@@ -419,9 +419,12 @@
 .gantt-edit-button {
   position: absolute;
   top: 8px;
-  right: 52px;
-  padding: 6px 12px;
-  background: var(--ls-link-text-color);
+  right: 45px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: var(--ls-primary-background-color);
   color: white;
   border: none;
   border-radius: 4px;
@@ -450,8 +453,11 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 6px 12px;
-  background: var(--ls-link-text-color);
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: var(--ls-primary-background-color);
   color: white;
   border: none;
   border-radius: 4px;
