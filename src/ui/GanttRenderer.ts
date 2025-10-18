@@ -7,6 +7,7 @@ import type { GanttData, GanttRenderOptions, Project, Stage, Milestone, Sprint }
 import { DEFAULT_CELL_WIDTH, CSS_CLASSES } from '../utils/constants';
 import { generateWorkingDaysScale, generateWeeksScale, getDayNameRu, formatWeekRange, isSameDay, getToday, getWorkingDaysBetween, getWeekStart, snapToWeekBoundary } from '../utils/dateUtils';
 import { ColorSystem } from '../utils/colorSystem';
+import { extractPlainText } from '../utils/textUtils';
 
 export class GanttRenderer {
   private colorSystem: ColorSystem;
@@ -274,7 +275,11 @@ export class GanttRenderer {
     // в режиме дней - количество дней
     const durationLabel = stage.duration;
 
-    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color};"><div class="gantt-stage-days" style="color: #202020">${durationLabel}</div><div class="gantt-stage-content"><div>${this.escapeHtml(stage.name)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(stage.assignee.name)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
+    // На таймлайне показываем только текст без ссылок
+    const plainStageName = extractPlainText(stage.name);
+    const plainAssigneeName = stage.assignee ? extractPlainText(stage.assignee.name) : '';
+
+    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color};"><div class="gantt-stage-days" style="color: #202020">${durationLabel}</div><div class="gantt-stage-content"><div>${this.escapeHtml(plainStageName)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(plainAssigneeName)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
   }
 
   /**
@@ -325,19 +330,49 @@ export class GanttRenderer {
   }
 
   /**
-   * Парсит текст и преобразует Logseq ссылки в кликабельные элементы
-   * Поддерживает форматы: [[Page Name]], [[Page Name|Alias]]
+   * Парсит текст и преобразует Logseq ссылки и markdown-ссылки в кликабельные элементы
+   * Поддерживает форматы:
+   * - [[Page Name]], [[Page Name|Alias]] - Logseq ссылки
+   * - [text](url) - Markdown ссылки
    */
   private parseLogseqLinks(text: string): string {
-    // Регулярное выражение для поиска [[Page Name]] или [[Page Name|Alias]]
-    const linkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+    // Парсим markdown-ссылки и Logseq-ссылки
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const logseqLinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
-    return text.replace(linkRegex, (_match, pageName, alias) => {
+    // Заменяем на специальные плейсхолдеры, чтобы не конфликтовали
+    const placeholders: string[] = [];
+    let result = text;
+
+    // Сначала заменяем Logseq ссылки на плейсхолдеры
+    result = result.replace(logseqLinkRegex, (_match, pageName, alias) => {
       const displayText = alias || pageName;
       const escapedPageName = this.escapeHtml(pageName);
       const escapedDisplayText = this.escapeHtml(displayText);
-
-      return `<a class="gantt-logseq-link" data-on-click="navigateToPage" data-page-name="${escapedPageName}" href="#" title="Перейти к ${escapedPageName}">${escapedDisplayText}</a>`;
+      const link = `<a class="gantt-logseq-link" data-on-click="navigateToPage" data-page-name="${escapedPageName}" href="#" title="Перейти к ${escapedPageName}">${escapedDisplayText}</a>`;
+      const placeholder = `__LOGSEQ_LINK_${placeholders.length}__`;
+      placeholders.push(link);
+      return placeholder;
     });
+
+    // Затем заменяем markdown-ссылки на плейсхолдеры
+    result = result.replace(markdownLinkRegex, (_match, linkText, url) => {
+      const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const escapedText = this.escapeHtml(linkText);
+      const link = `<a href="${escapedUrl}" class="gantt-logseq-link" target="_blank" rel="noopener noreferrer">${escapedText}</a>`;
+      const placeholder = `__LOGSEQ_LINK_${placeholders.length}__`;
+      placeholders.push(link);
+      return placeholder;
+    });
+
+    // Экранируем оставшийся текст
+    result = this.escapeHtml(result);
+
+    // Восстанавливаем ссылки из плейсхолдеров
+    placeholders.forEach((link, index) => {
+      result = result.replace(`__LOGSEQ_LINK_${index}__`, link);
+    });
+
+    return result;
   }
 }
