@@ -338,13 +338,13 @@
   background: #FFD93D;
   transition: box-shadow 0.2s, transform 0.1s;
   top: 17px;
-  z-index: 2;
+  z-index: 6;
 }
 
 .gantt-milestone:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transform: rotate(45deg) translateX(-50%) scale(1.1);
-  z-index: 5;
+  z-index: 10;
 }
 
 .gantt-milestone.gantt-dragging {
