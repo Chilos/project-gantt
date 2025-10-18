@@ -297,7 +297,7 @@ export class GanttRenderer {
    * Рендерит кнопку редактирования
    */
   private renderEditButton(slotId: string): string {
-    return `<button class="gantt-edit-button" data-on-click="openGanttEditor" data-slot-id="${slotId}">✏</button>`;
+    return `<button class="gantt-edit-button" data-on-click="openGanttEditor" data-slot-id="${slotId}">✏</button><button class="gantt-export-button" data-on-click="exportGanttToPNG" data-slot-id="${slotId}">📷</button>`;
   }
 
   /**

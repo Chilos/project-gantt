@@ -12,7 +12,8 @@
   box-sizing: border-box;
 }
 
-.gantt-container:hover .gantt-edit-button {
+.gantt-container:hover .gantt-edit-button,
+.gantt-container:hover .gantt-export-button {
   opacity: 1;
   pointer-events: auto;
 }
@@ -418,7 +419,7 @@
 .gantt-edit-button {
   position: absolute;
   top: 8px;
-  right: 8px;
+  right: 52px;
   padding: 6px 12px;
   background: var(--ls-link-text-color);
   color: white;
@@ -440,6 +441,36 @@
 }
 
 .gantt-edit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Export Button */
+.gantt-export-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 12px;
+  background: var(--ls-link-text-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.gantt-export-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gantt-export-button:active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }

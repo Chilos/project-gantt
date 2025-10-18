@@ -13,6 +13,7 @@ import { GanttRenderer } from './ui/GanttRenderer';
 import { VisualEditor } from './ui/VisualEditor';
 import { EditorModal } from './ui/EditorModal';
 import { ColumnResizer } from './ui/ColumnResizer';
+import { domToPng } from 'modern-screenshot';
 
 // Import styles
 import ganttCSS from './styles/gantt.css';
@@ -39,6 +40,9 @@ export class ProjectGanttPlugin {
     // Инициализируем цветовую систему
     this.colors = this.colorSystem.generateStageColors();
 
+    // Регистрируем настройки
+    this.registerSettings();
+
     // Регистрируем стили
     this.registerStyles();
 
@@ -53,6 +57,28 @@ export class ProjectGanttPlugin {
 
     // Слушаем изменения темы
     this.setupThemeListener();
+  }
+
+  /**
+   * Регистрирует настройки плагина
+   */
+  private registerSettings(): void {
+    logseq.useSettingsSchema([
+      {
+        key: 'exportQuality',
+        type: 'number',
+        default: 1,
+        title: 'Качество экспорта PNG',
+        description: 'Качество экспортированного PNG изображения (0.1 - 1.0). Выше значение = лучше качество, но больше размер файла.',
+      },
+      {
+        key: 'exportScale',
+        type: 'number',
+        default: 2,
+        title: 'Масштаб экспорта PNG',
+        description: 'Множитель масштаба/разрешения для экспорта PNG (1 - 4). Выше значение = чётче изображение, но больше размер файла.',
+      },
+    ]);
   }
 
   /**
@@ -119,6 +145,17 @@ export class ProjectGanttPlugin {
         } catch (error) {
           console.error(`[${PLUGIN_NAME}] Failed to navigate to page:`, error);
         }
+      },
+
+      exportGanttToPNG: async (e: EditorButtonClickEvent) => {
+        const slotId = (e as any).slot || e.dataset?.slotId || e.slotId || e['data-slot-id'];
+
+        if (!slotId) {
+          console.error(`[${PLUGIN_NAME}] No slotId found in event`);
+          return;
+        }
+
+        await this.exportToPNG(slotId);
       },
     });
   }
@@ -224,6 +261,92 @@ export class ProjectGanttPlugin {
     // Создаем и показываем модальный редактор
     const modal = new EditorModal(initialData, blockUuid);
     modal.show();
+  }
+
+  /**
+   * Экспортирует диаграмму Ганта в PNG и копирует в буфер обмена
+   */
+  private async exportToPNG(slotId: string): Promise<void> {
+    try {
+      const root = (parent && (parent as any).document) ? (parent as any).document : document;
+      const container = root.querySelector(`.gantt-container[data-slot-id="${slotId}"]`) as HTMLElement | null;
+
+      if (!container) {
+        logseq.UI.showMsg('Не удалось найти диаграмму для экспорта', 'error');
+        return;
+      }
+
+      // Временно скрываем кнопки
+      const buttons = container.querySelectorAll('.gantt-edit-button, .gantt-export-button') as NodeListOf<HTMLElement>;
+      buttons.forEach(btn => {
+        btn.style.display = 'none';
+      });
+
+      // Получаем настройки из конфигурации плагина
+      const quality = Math.max(0.1, Math.min(1, logseq.settings?.exportQuality ?? 1));
+      const scale = Math.max(1, Math.min(4, logseq.settings?.exportScale ?? 2));
+
+      // Используем modern-screenshot для точного рендеринга с CSS
+      const dataUrl = await domToPng(container, {
+        quality: quality,
+        scale: scale,
+        backgroundColor: getComputedStyle(root.documentElement).getPropertyValue('--ls-primary-background-color') || '#ffffff',
+        style: {},
+        filter: (node: Element) => {
+          // Фильтруем элементы - исключаем кнопки
+          if (node instanceof HTMLElement) {
+            if (node.classList.contains('gantt-edit-button') || node.classList.contains('gantt-export-button')) {
+              return false;
+            }
+          }
+          return true;
+        }
+      });
+
+      // Возвращаем кнопки
+      buttons.forEach(btn => {
+        btn.style.display = '';
+      });
+
+      // Конвертируем data URL в blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      try {
+        // Пробуем использовать родительское окно для доступа к clipboard
+        const parentWindow = (parent && (parent as any).window) ? (parent as any).window : window;
+
+        if (parentWindow.navigator.clipboard && parentWindow.ClipboardItem) {
+          await parentWindow.navigator.clipboard.write([
+            new parentWindow.ClipboardItem({
+              'image/png': blob
+            })
+          ]);
+          logseq.UI.showMsg('Диаграмма скопирована в буфер обмена', 'success');
+        } else {
+          // Fallback: создаем временную ссылку для скачивания
+          const link = root.createElement('a');
+          link.href = dataUrl;
+          link.download = `gantt-chart-${new Date().getTime()}.png`;
+          root.body.appendChild(link);
+          link.click();
+          root.body.removeChild(link);
+          logseq.UI.showMsg('Диаграмма сохранена в загрузки', 'success');
+        }
+      } catch (clipboardError) {
+        // Fallback: скачиваем файл
+        const link = root.createElement('a');
+        link.href = dataUrl;
+        link.download = `gantt-chart-${new Date().getTime()}.png`;
+        root.body.appendChild(link);
+        link.click();
+        root.body.removeChild(link);
+        logseq.UI.showMsg('Диаграмма сохранена в загрузки', 'success');
+      }
+    } catch (error) {
+      console.error(`[${PLUGIN_NAME}] Failed to export to PNG:`, error);
+      logseq.UI.showMsg('Ошибка при экспорте в PNG', 'error');
+    }
   }
 
   /**
