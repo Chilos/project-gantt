@@ -174,12 +174,22 @@
   align-items: stretch;
 }
 
+/* Заголовочная строка multiline проекта */
 .gantt-project-row.gantt-project-main {
   background: var(--ls-secondary-background-color);
+  font-weight: 600;
 }
 
+/* Строки этапов в multiline режиме - без фона, только отступ */
 .gantt-project-row.gantt-stage-row {
   min-height: 32px;
+  background: var(--ls-primary-background-color);
+}
+
+/* Если в контейнере есть хотя бы один multiline проект,
+   все inline проекты получают такой же фон как заголовки multiline */
+.gantt-projects:has(.gantt-project-main) .gantt-project-row:not(.gantt-project-main):not(.gantt-stage-row) {
+  background: var(--ls-secondary-background-color);
 }
 
 .gantt-project-name {
@@ -289,7 +299,8 @@
 }
 
 .gantt-stage-content {
-  color: #202020;
+  /* Принудительно темный цвет текста для лучшей читаемости */
+  color: #202020 !important;
   flex: 1;
   display: flex;
   flex-direction: column;

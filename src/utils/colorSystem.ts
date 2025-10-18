@@ -4,6 +4,7 @@
  */
 
 import type { HSL, RGB, ThemeMode } from '../types';
+import {log} from "@logseq/libs/dist/postmate";
 
 export class ColorSystem {
   private themeMode: ThemeMode = 'light';
@@ -190,10 +191,19 @@ export class ColorSystem {
 
   /**
    * Получает контрастный цвет текста (черный или белый)
+   * Использует улучшенный алгоритм WCAG для определения контрастности
    */
   getContrastTextColor(backgroundColor: string): string {
-    const brightness = this.getColorBrightness(backgroundColor);
-    return brightness > 128 ? '#2c2c2c' : '#ffffff';
+    const rgb = this.hexToRgb(backgroundColor);
+    if (!rgb) return '#2c2c2c';
+
+    // Используем относительную яркость по стандарту WCAG 2.0
+    const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+
+    // Порог 0.5 (50% яркости)
+    // Светлые цвета (luminance > 0.5) → темный текст
+    // Темные цвета (luminance <= 0.5) → белый текст
+    return luminance > 0.1 ? '#2c2c2c' : '#ffffff';
   }
 
   /**

@@ -355,7 +355,7 @@
 .gantt-milestone-name {
   font-size: 14px;
   font-weight: 500;
-  color: #202020;
+  color: var(--ls-primary-text-color);
   margin-bottom: 2px;
 }
 

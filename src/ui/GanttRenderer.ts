@@ -269,13 +269,12 @@ export class GanttRenderer {
   private renderStage(stage: Stage, startDate: Date, cellWidth: number, workingDaysConfig: any, timeScale: 'day' | 'week' = 'day', weekStartsOn: 0 | 1 = 1): string {
     const position = this.getDatePosition(startDate, stage.start, cellWidth, workingDaysConfig, timeScale, weekStartsOn);
     const width = stage.duration * cellWidth;
-    const textColor = this.colorSystem.getContrastTextColor(stage.color);
 
     // В режиме недель stage.duration уже содержит количество недель,
     // в режиме дней - количество дней
     const durationLabel = stage.duration;
 
-    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color}; color: ${textColor};"><div class="gantt-stage-days">${durationLabel}</div><div class="gantt-stage-content"><div class="gantt-stage-name">${this.escapeHtml(stage.name)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(stage.assignee.name)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
+    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color};"><div class="gantt-stage-days" style="color: #202020">${durationLabel}</div><div class="gantt-stage-content"><div>${this.escapeHtml(stage.name)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(stage.assignee.name)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
   }
 
   /**
