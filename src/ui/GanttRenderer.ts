@@ -279,7 +279,12 @@ export class GanttRenderer {
     const plainStageName = extractPlainText(stage.name);
     const plainAssigneeName = stage.assignee ? extractPlainText(stage.assignee.name) : '';
 
-    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color};"><div class="gantt-stage-days" style="color: #202020">${durationLabel}</div><div class="gantt-stage-content"><div>${this.escapeHtml(plainStageName)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(plainAssigneeName)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
+    // Формируем title для tooltip
+    const title = stage.assignee
+      ? `${plainStageName} (${plainAssigneeName})`
+      : plainStageName;
+
+    return `<div class="${CSS_CLASSES.STAGE}" data-stage-id="${stage.id}" data-type="stage" style="left: ${position}px; width: ${width}px; background-color: ${stage.color}; color: #202020;" title="${this.escapeHtml(title)}"><div class="gantt-stage-days" style="color: #202020">${durationLabel}</div><div class="gantt-stage-content"><div class="gantt-stage-name" style="color: #202020">${this.escapeHtml(plainStageName)}</div>${stage.assignee ? `<div class="gantt-stage-assignee">${this.escapeHtml(plainAssigneeName)}</div>` : ''}</div><div class="gantt-resize-handle gantt-resize-right"></div></div>`;
   }
 
   /**
