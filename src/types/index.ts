@@ -63,7 +63,7 @@ export interface GanttData {
 export interface SerializableStage {
   id: string;
   name: string;
-  type: string;
+  type?: string;
   start: string; // ISO date string
   duration: number;
   assignee?: Assignee;
@@ -75,7 +75,7 @@ export interface SerializableMilestone {
   name: string;
   date: string; // ISO date string
   assignee?: Assignee;
-  type: string;
+  type?: string;
   color?: string;
 }
 
@@ -101,8 +101,8 @@ export interface SerializableGanttData {
   startDate: string; // ISO date string
   endDate: string; // ISO date string
   excludeWeekdays: number[];
-  includeDates: string[];
-  excludeDates: string[];
+  includeDates?: string[];
+  excludeDates?: string[];
   showTodayLine?: boolean;
   timeScale: 'day' | 'week'; // Обязательное поле, задается при создании
   weekStartsOn?: 0 | 1;

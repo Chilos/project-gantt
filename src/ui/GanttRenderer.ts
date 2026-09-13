@@ -6,15 +6,10 @@
 import type { GanttData, GanttRenderOptions, Project, Stage, Milestone, Sprint } from '../types';
 import { DEFAULT_CELL_WIDTH, CSS_CLASSES } from '../utils/constants';
 import { generateWorkingDaysScale, generateWeeksScale, getDayNameRu, formatWeekRange, isSameDay, getToday, getWorkingDaysBetween, getWeekStart, snapToWeekBoundary } from '../utils/dateUtils';
-import { ColorSystem } from '../utils/colorSystem';
 import { extractPlainText } from '../utils/textUtils';
 
 export class GanttRenderer {
-  private colorSystem: ColorSystem;
-
-  constructor() {
-    this.colorSystem = new ColorSystem();
-  }
+  constructor() {}
 
   /**
    * Рендерит полную Gantt диаграмму
@@ -329,9 +324,13 @@ export class GanttRenderer {
    * Экранирует HTML
    */
   private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**
@@ -360,11 +359,13 @@ export class GanttRenderer {
       return placeholder;
     });
 
-    // Затем заменяем markdown-ссылки на плейсхолдеры
+    // Затем заменяем markdown-ссылки на плейсхолдеры с проверкой безопасного URL
     result = result.replace(markdownLinkRegex, (_match, linkText, url) => {
-      const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const trimmedUrl = url.trim();
+      const isSafe = /^https?:\/\//i.test(trimmedUrl) || /^mailto:/i.test(trimmedUrl) || trimmedUrl.startsWith('#') || trimmedUrl.startsWith('/');
+      const safeUrl = isSafe ? trimmedUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '#';
       const escapedText = this.escapeHtml(linkText);
-      const link = `<a href="${escapedUrl}" class="gantt-logseq-link" target="_blank" rel="noopener noreferrer">${escapedText}</a>`;
+      const link = `<a href="${safeUrl}" class="gantt-logseq-link" target="_blank" rel="noopener noreferrer">${escapedText}</a>`;
       const placeholder = `__LOGSEQ_LINK_${placeholders.length}__`;
       placeholders.push(link);
       return placeholder;

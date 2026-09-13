@@ -25,6 +25,7 @@ export class GanttManager {
       excludeWeekdays: [],
       includeDates: [],
       excludeDates: [],
+      timeScale: 'day',
     };
   }
 

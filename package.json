@@ -1,11 +1,12 @@
 {
   "name": "logseq-plugin-project-gantt",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Интерактивная диаграмма Ганта для управления проектами в Logseq",
   "main": "dist/index.js",
   "scripts": {
-    "build": "node scripts/update-version.js && esbuild src/index.ts --bundle --outfile=dist/index.js --external:@logseq/libs --format=iife --global-name=ProjectGanttPlugin --loader:.css=text --sourcemap",
-    "build:release": "node scripts/update-version.js && esbuild src/index.ts --bundle --outfile=dist/index.js --external:@logseq/libs --format=iife --global-name=ProjectGanttPlugin --loader:.css=text --minify",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node scripts/update-version.js && esbuild src/index.ts --bundle --outfile=dist/index.js --external:@logseq/libs --format=iife --global-name=ProjectGanttPlugin --loader:.css=text --sourcemap",
+    "build:release": "npm run typecheck && node scripts/update-version.js && esbuild src/index.ts --bundle --outfile=dist/index.js --external:@logseq/libs --format=iife --global-name=ProjectGanttPlugin --loader:.css=text --minify",
     "dev": "esbuild src/index.ts --bundle --outfile=dist/index.js --external:@logseq/libs --format=iife --global-name=ProjectGanttPlugin --loader:.css=text --sourcemap --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -36,7 +37,6 @@
     "@vitest/ui": "^3.2.4",
     "esbuild": "^0.19.0",
     "happy-dom": "^17.6.1",
-    "jsdom": "^26.1.0",
     "typescript": "^5.0.0",
     "vitest": "^3.2.4"
   },

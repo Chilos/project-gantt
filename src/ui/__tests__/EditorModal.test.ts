@@ -29,16 +29,16 @@ describe('EditorModal', () => {
       includeDates: [],
       excludeDates: [],
       showTodayLine: true,
+      timeScale: 'day',
     };
   });
 
   describe('Sprint default dates', () => {
     it('should use project start date for first sprint', () => {
-      const editor = new EditorModal(mockData, blockUuid);
+      new EditorModal(mockData, blockUuid);
 
       // First sprint should start at project start date
       const expectedStart = new Date('2024-01-01');
-      const expectedEnd = new Date('2024-01-14'); // Start + 13 days
 
       expect(mockData.sprints.length).toBe(0);
 
@@ -56,7 +56,7 @@ describe('EditorModal', () => {
         end: new Date('2024-01-14'),
       }];
 
-      const editor = new EditorModal(mockData, blockUuid);
+      new EditorModal(mockData, blockUuid);
 
       // Second sprint should start day after first sprint ends
       const lastSprint = mockData.sprints[mockData.sprints.length - 1];
@@ -143,7 +143,7 @@ describe('EditorModal', () => {
       }
 
       // Verify all sprints end on Sunday
-      sprints.forEach((sprint, index) => {
+      sprints.forEach((sprint) => {
         expect(sprint.end.getDay()).toBe(0); // Sunday
       });
     });

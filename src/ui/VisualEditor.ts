@@ -39,6 +39,9 @@ export class VisualEditor {
   private preservedPositions: Map<string, string> = new Map();
   private preservedSizes: Map<string, { width: string; left: string }> = new Map();
   private doc: Document;
+  private boundMouseDown: (e: MouseEvent) => void;
+  private boundMouseMove: (e: MouseEvent) => void;
+  private boundMouseUp: (e: MouseEvent) => void;
 
   constructor(data: GanttData, blockUuid: string) {
     this.data = data;
@@ -46,6 +49,10 @@ export class VisualEditor {
     this.storage = new GanttDataManager();
     // Получаем правильный document для iframe Logseq
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
+
+    this.boundMouseDown = this.handleMouseDown.bind(this);
+    this.boundMouseMove = this.handleMouseMove.bind(this);
+    this.boundMouseUp = this.handleMouseUp.bind(this);
 
     // Для недельного режима ширина ячейки в 2 раза больше
     const timeScale = data.timeScale || 'day';
@@ -75,13 +82,13 @@ export class VisualEditor {
    * Инициализирует обработчики событий для drag-and-drop
    */
   setupEventListeners(container: HTMLElement): void {
+    if (this.container && this.container !== container) {
+      this.cleanup();
+    }
     this.container = container;
 
-    // Обработка перетаскивания
-    container.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    // Используем правильный document для iframe
-    this.doc.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.doc.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    // Обработка перетаскивания (слушатели движения вешаются только при mousedown)
+    container.addEventListener('mousedown', this.boundMouseDown);
   }
 
   /**
@@ -108,6 +115,8 @@ export class VisualEditor {
         }
 
         target.classList.add('gantt-resizing');
+        this.doc.addEventListener('mousemove', this.boundMouseMove);
+        this.doc.addEventListener('mouseup', this.boundMouseUp);
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -140,6 +149,8 @@ export class VisualEditor {
       this.dragState.dragOffset.y = e.clientY - rect.top;
 
       dragElement.classList.add('gantt-dragging');
+      this.doc.addEventListener('mousemove', this.boundMouseMove);
+      this.doc.addEventListener('mouseup', this.boundMouseUp);
       e.preventDefault();
     }
   }
@@ -227,6 +238,10 @@ export class VisualEditor {
    * Обрабатывает окончание перетаскивания
    */
   private handleMouseUp(e: MouseEvent): void {
+    // Всегда снимаем слушатели движения мыши при отпускании кнопки
+    this.doc.removeEventListener('mousemove', this.boundMouseMove);
+    this.doc.removeEventListener('mouseup', this.boundMouseUp);
+
     if ((!this.dragState.isDragging && !this.dragState.isResizing) || !this.dragState.dragTarget) {
       return;
     }
@@ -403,11 +418,10 @@ export class VisualEditor {
    */
   cleanup(): void {
     if (this.container) {
-      this.container.removeEventListener('mousedown', this.handleMouseDown.bind(this));
+      this.container.removeEventListener('mousedown', this.boundMouseDown);
     }
-    // Используем правильный document для iframe
-    this.doc.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.doc.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.doc.removeEventListener('mousemove', this.boundMouseMove);
+    this.doc.removeEventListener('mouseup', this.boundMouseUp);
 
     this.preservedPositions.clear();
     this.preservedSizes.clear();

@@ -17,8 +17,10 @@ export default defineConfig({
         'src/index.ts',
         'src/plugin.ts',
         'src/ui/EditorModal.ts',
+        'src/ui/modal/**',
         'src/ui/VisualEditor.ts',
         'src/ui/ColumnResizer.ts',
+        'src/ui/DragAndDropManager.ts',
         'scripts/**',
       ],
       include: [

@@ -12,11 +12,18 @@ export class ColumnResizer {
   private minWidth: number = 120;
   private maxWidth: number = 400;
   private doc: Document;
+  private boundMouseDown: (e: MouseEvent) => void;
+  private boundMouseMove: (e: MouseEvent) => void;
+  private boundMouseUp: (e: MouseEvent) => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
     // Получаем правильный document для iframe Logseq
     this.doc = (parent && (parent as any).document) ? (parent as any).document : document;
+
+    this.boundMouseDown = this.handleMouseDown.bind(this);
+    this.boundMouseMove = this.handleMouseMove.bind(this);
+    this.boundMouseUp = this.handleMouseUp.bind(this);
 
     // Восстанавливаем сохранённую ширину ДО инициализации событий
     // чтобы предотвратить "мерцание" при перерисовке
@@ -35,9 +42,7 @@ export class ColumnResizer {
       return;
     }
 
-    this.resizer.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    this.doc.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.doc.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.resizer.addEventListener('mousedown', this.boundMouseDown);
   }
 
   /**
@@ -62,6 +67,10 @@ export class ColumnResizer {
     // Предотвращаем выделение текста
     this.doc.body.style.userSelect = 'none';
     this.doc.body.style.cursor = 'col-resize';
+
+    // Слушаем движение только во время перетаскивания
+    this.doc.addEventListener('mousemove', this.boundMouseMove);
+    this.doc.addEventListener('mouseup', this.boundMouseUp);
   }
 
   /**
@@ -99,6 +108,10 @@ export class ColumnResizer {
     // Восстанавливаем стили
     this.doc.body.style.userSelect = '';
     this.doc.body.style.cursor = '';
+
+    // Снимаем слушатели движения
+    this.doc.removeEventListener('mousemove', this.boundMouseMove);
+    this.doc.removeEventListener('mouseup', this.boundMouseUp);
 
     // Сохраняем ширину в localStorage
     const projectHeader = this.container.querySelector('.gantt-project-header') as HTMLElement;
@@ -197,9 +210,9 @@ export class ColumnResizer {
    */
   cleanup(): void {
     if (this.resizer) {
-      this.resizer.removeEventListener('mousedown', this.handleMouseDown.bind(this));
+      this.resizer.removeEventListener('mousedown', this.boundMouseDown);
     }
-    this.doc.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.doc.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.doc.removeEventListener('mousemove', this.boundMouseMove);
+    this.doc.removeEventListener('mouseup', this.boundMouseUp);
   }
 }

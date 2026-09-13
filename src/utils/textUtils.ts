@@ -57,7 +57,7 @@ export function parseMarkdownLinks(text: string): Array<{ type: 'text' | 'link',
  * @param escapeHtml - Функция экранирования HTML
  * @returns HTML-строка с кликабельными ссылками
  */
-export function renderTextWithLinks(text: string, escapeHtml: (str: string) => string): string {
+export function renderTextWithLinks(text: string, _escapeHtml?: (str: string) => string): string {
   const parts = parseMarkdownLinks(text);
 
   return parts.map(part => {

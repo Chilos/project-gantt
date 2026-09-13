@@ -77,21 +77,21 @@ export function toSerializable(data: GanttData): SerializableGanttData {
  */
 export function fromSerializable(data: SerializableGanttData): GanttData {
   return {
-    projects: data.projects.map(project => ({
+    projects: (data.projects || []).map(project => ({
       ...project,
-      stages: project.stages.map(stage => ({
+      stages: (project.stages || []).map(stage => ({
         ...stage,
         type: (stage as any).type || stage.name, // Восстанавливаем type из name, если его нет
         start: parseDateISO(stage.start),
       })),
-      milestones: project.milestones.map(milestone => ({
+      milestones: (project.milestones || []).map(milestone => ({
         ...milestone,
         type: (milestone as any).type || milestone.name, // Восстанавливаем type из name, если его нет
         date: parseDateISO(milestone.date),
       })),
       layout: project.layout || 'inline',
     })),
-    sprints: data.sprints.map(sprint => ({
+    sprints: (data.sprints || []).map(sprint => ({
       ...sprint,
       start: parseDateISO(sprint.start),
       end: parseDateISO(sprint.end),
@@ -102,7 +102,7 @@ export function fromSerializable(data: SerializableGanttData): GanttData {
     includeDates: data.includeDates || [],
     excludeDates: data.excludeDates || [],
     showTodayLine: data.showTodayLine !== undefined ? data.showTodayLine : true,
-    timeScale: data.timeScale, // Обязательное поле, должно быть задано при создании
+    timeScale: data.timeScale || 'day', // Поддержка старых диаграмм без timeScale
     weekStartsOn: data.weekStartsOn !== undefined ? data.weekStartsOn : 1, // Понедельник по умолчанию
   };
 }
@@ -139,8 +139,12 @@ export function decodeGanttData(encoded: string): GanttData {
       // Старый формат с encodeURIComponent
       json = decodeURIComponent(decoded);
     } else {
-      // Новый формат (UTF-8 через escape/unescape)
-      json = decodeURIComponent(escape(decoded));
+      // Новый формат (UTF-8 через escape/unescape) с fallback на сырой JSON
+      try {
+        json = decodeURIComponent(escape(decoded));
+      } catch {
+        json = decoded;
+      }
     }
 
     const serializable = JSON.parse(json) as SerializableGanttData;

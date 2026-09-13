@@ -222,7 +222,7 @@ export function getWeekNumber(date: Date): number {
  * @param weekStart - Начало недели
  * @param weekStartsOn - День начала недели: 0 = воскресенье, 1 = понедельник (по умолчанию 1)
  */
-export function formatWeekRange(weekStart: Date, weekStartsOn: 0 | 1 = 1): string {
+export function formatWeekRange(weekStart: Date, _weekStartsOn: 0 | 1 = 1): string {
   const weekNumber = getWeekNumber(weekStart);
   return `${weekNumber}`;
 }

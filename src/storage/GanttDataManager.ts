@@ -6,21 +6,28 @@
 import type { GanttData, IGanttRepository } from '../types';
 import { encodeGanttData, decodeGanttData, createDefaultGanttData, validateGanttData, sanitizeGanttData } from '../utils/encoding';
 import { RENDERER_TYPE, PLUGIN_NAME } from '../utils/constants';
-import { formatDateISO } from '../utils/dateUtils';
 
 export class GanttDataManager implements IGanttRepository {
   /**
    * Сохраняет данные Gantt в блок Logseq
    */
   async save(uuid: string, data: GanttData): Promise<void> {
-    const encoded = encodeGanttData(data);
-    const content = `{{renderer ${RENDERER_TYPE}, ${encoded}}}`;
-
     const block = await logseq.Editor.getBlock(uuid);
     if (!block) {
       console.error(`[${PLUGIN_NAME}] GanttDataManager.save() - Блок не найден`, { uuid });
       throw new Error('Block not found');
     }
+
+    const encoded = encodeGanttData(data);
+    const newMacro = `{{renderer ${RENDERER_TYPE}, ${encoded}}}`;
+    const macroRegex = /\{\{renderer\s+:?project-gantt\s*,\s*[^}]*\}\}/i;
+    const existingContent = block.content ?? '';
+
+    const content = macroRegex.test(existingContent)
+      ? existingContent.replace(macroRegex, newMacro)
+      : existingContent.trim()
+        ? `${existingContent}\n${newMacro}`
+        : newMacro;
 
     await logseq.Editor.updateBlock(uuid, content);
   }

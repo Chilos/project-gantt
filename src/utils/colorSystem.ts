@@ -4,7 +4,6 @@
  */
 
 import type { HSL, RGB, ThemeMode } from '../types';
-import {log} from "@logseq/libs/dist/postmate";
 
 export class ColorSystem {
   private themeMode: ThemeMode = 'light';
@@ -203,7 +202,7 @@ export class ColorSystem {
     // Порог 0.5 (50% яркости)
     // Светлые цвета (luminance > 0.5) → темный текст
     // Темные цвета (luminance <= 0.5) → белый текст
-    return luminance > 0.1 ? '#2c2c2c' : '#ffffff';
+    return luminance > 0.5 ? '#2c2c2c' : '#ffffff';
   }
 
   /**

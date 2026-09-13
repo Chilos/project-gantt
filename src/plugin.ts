@@ -283,8 +283,8 @@ export class ProjectGanttPlugin {
       });
 
       // Получаем настройки из конфигурации плагина
-      const quality = Math.max(0.1, Math.min(1, logseq.settings?.exportQuality ?? 1));
-      const scale = Math.max(1, Math.min(4, logseq.settings?.exportScale ?? 2));
+      const quality = Math.max(0.1, Math.min(1, Number(logseq.settings?.exportQuality) || 1));
+      const scale = Math.max(1, Math.min(4, Number(logseq.settings?.exportScale) || 2));
 
       // Используем modern-screenshot для точного рендеринга с CSS
       const dataUrl = await domToPng(container, {
@@ -292,7 +292,7 @@ export class ProjectGanttPlugin {
         scale: scale,
         backgroundColor: getComputedStyle(root.documentElement).getPropertyValue('--ls-primary-background-color') || '#ffffff',
         style: {},
-        filter: (node: Element) => {
+        filter: (node: Node) => {
           // Фильтруем элементы - исключаем кнопки
           if (node instanceof HTMLElement) {
             if (node.classList.contains('gantt-edit-button') || node.classList.contains('gantt-export-button')) {
@@ -353,10 +353,17 @@ export class ProjectGanttPlugin {
    * Устанавливает слушатели для изменения темы
    */
   private setupThemeListener(): void {
-    logseq.App.onThemeModeChanged(({ mode }: { mode: 'light' | 'dark' }) => {
+    logseq.App.onThemeModeChanged(() => {
       this.colorSystem.refresh();
       this.colors = this.colorSystem.generateStageColors();
     });
+  }
+
+  /**
+   * Возвращает текущую палитру цветов для этапов
+   */
+  getStageColors(): string[] {
+    return this.colors;
   }
 
   /**
